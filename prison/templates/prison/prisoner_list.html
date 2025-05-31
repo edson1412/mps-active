@@ -1,0 +1,140 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Prisoners{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Prisoners</h1>
+        <a href="{% url 'add_prisoner' %}" class="btn btn-primary">
+            <i class="bi bi-plus-circle"></i> Add Prisoner
+        </a>
+    </div>
+    
+    <!-- Search Form -->
+    <div class="card mb-4">
+        <div class="card-body">
+            <form method="get" class="row g-3">
+                <div class="col-md-3">
+                    {{ form.search_query.label_tag }}
+                    {{ form.search_query }}
+                </div>
+                <div class="col-md-2">
+                    {{ form.prisoner_class.label_tag }}
+                    {{ form.prisoner_class }}
+                </div>
+                {% if user.is_superuser %}
+                <div class="col-md-2">
+                    {{ form.prison_station.label_tag }}
+                    {{ form.prison_station }}
+                </div>
+                {% endif %}
+                <div class="col-md-2">
+                    {{ form.risk_level.label_tag }}
+                    {{ form.risk_level }}
+                </div>
+                <div class="col-md-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-primary me-2">
+                        <i class="bi bi-search"></i> Search
+                    </button>
+                    <a href="{% url 'prisoner_list' %}" class="btn btn-outline-secondary">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </a>
+                </div>
+            </form>
+        </div>
+    </div>
+    
+    <!-- Prisoners Table -->
+    <div class="card">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Prisoner No.</th>
+                            <th>Name</th>
+                            <th>Class</th>
+                            <th>Station</th>
+                            <th>Admission Date</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prisoner in prisoners %}
+                        <tr>
+                            <td>{{ prisoner.prisoner_number }}</td>
+                            <td>{{ prisoner.full_name }}</td>
+                            <td>
+                                <span class="badge {% if prisoner.prisoner_class == 'convicted' %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ prisoner.get_prisoner_class_display }}
+                                </span>
+                            </td>
+                            <td>{{ prisoner.prison_station.name }}</td>
+                            <td>{{ prisoner.date_admitted|date:"Y-m-d" }}</td>
+                            <td>
+                                <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-sm btn-outline-primary" title="View">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{% url 'generate_prisoner_report' prisoner.id %}" class="btn btn-sm btn-outline-info" title="Generate Report">
+                                    <i class="bi bi-file-earmark-pdf"></i>
+                                </a>
+                                {% if user.is_superuser %}
+                                <a href="{% url 'transfer_prisoner' prisoner.id %}" class="btn btn-sm btn-outline-warning" title="Transfer">
+                                    <i class="bi bi-arrow-left-right"></i>
+                                </a>
+                                <a href="{% url 'delete_prisoner' prisoner.id %}" class="btn btn-sm btn-outline-warning" title="Delete">
+                                    <i class="bi bi-bin-left-right"></i>
+                                </a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center">No prisoners found.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+            <nav aria-label="Page navigation">
+                <ul class="pagination justify-content-center mt-4">
+                    {% if page_obj.has_previous %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page=1">&laquo; First</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}">Previous</a>
+                    </li>
+                    {% endif %}
+                    
+                    <li class="page-item active">
+                        <span class="page-link">
+                            Page {{ page_obj.number }} of {{ page_obj.paginator.num_pages }}
+                        </span>
+                    </li>
+                    
+                    {% if page_obj.has_next %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.next_page_number }}">Next</a>
+                    </li>
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">Last &raquo;</a>
+                    </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

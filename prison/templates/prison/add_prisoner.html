@@ -1,0 +1,103 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Add Prisoner{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+
+    .card {
+        transition: transform 0.3s ease, box-shadow 0.3s ease;
+    }
+    .card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    }
+    .btn-primary, .btn-secondary {
+        transition: background-color 0.3s ease, transform 0.2s ease;
+    }
+    .btn-primary:hover {
+        background-color: #005f99;
+        transform: scale(1.05);
+    }
+    .btn-secondary:hover {
+        background-color: #5a6268;
+        transform: scale(1.05);
+    }
+    .section-heading {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .section-icon {
+        font-size: 1.2em;
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-4">Add New Prisoner</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <h5 class="mb-3 section-heading text-primary">
+                            <i class="bi bi-person-fill section-icon"></i> Basic Information
+                        </h5>
+                        {{ prisoner_form.prisoner_number|as_crispy_field }}
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                {{ prisoner_form.first_name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ prisoner_form.middle_name|as_crispy_field }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ prisoner_form.surname|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ prisoner_form.sex|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ prisoner_form.age|as_crispy_field }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="mb-3 section-heading text-success">
+                            <i class="bi bi-building-fill section-icon"></i> Prison Details
+                        </h5>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ prisoner_form.prisoner_class|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ prisoner_form.prison_station|as_crispy_field }}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ prisoner_form.block_number|as_crispy_field }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ prisoner_form.cell_number|as_crispy_field }}
+                            </div>
+                        </div>
+                        {{ prisoner_form.date_admitted|as_crispy_field }}
+                        {{ prisoner_form.image|as_crispy_field }}
+                    </div>
+                </div>
+                <button type="submit" class="btn btn-primary">Save and Continue</button>
+                <a href="{% url 'prisoner_list' %}" class="btn btn-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

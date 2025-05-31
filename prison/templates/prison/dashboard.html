@@ -1,0 +1,275 @@
+{% extends "prison/base.html" %}
+{% load static %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+    <style>
+        /* Make 'main' a flex container for content layout on dashboard page */
+        main.flex-grow-1 { 
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* New wrapper for dashboard content that will have the background image */
+        .dashboard-content-bg-wrapper {
+            background-image: url('{% static "images/dashboard-background.jpg" %}'); /* Ensure this is your correct image path */
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            flex-grow: 1; 
+            display: flex; 
+            flex-direction: column; 
+        }
+
+        .dashboard-content-bg-wrapper > .container-fluid {
+            /* Adjust padding if necessary, for example: */
+            /* padding-top: 20px; */
+            /* padding-bottom: 20px; */
+        }
+        
+        /* MODIFIED: Readability for Dashboard H1 on the new background */
+        .dashboard-content-bg-wrapper .container-fluid > h1.mb-4 {
+            color: #ffffff; /* White color for the 'Dashboard' H1 */
+            text-shadow: 1px 1px 3px rgba(0, 0, 0, 0.6), 0 0 5px rgba(0,0,0,0.4); /* Text shadow for better readability */
+            text-align: left; /* Align text to the left as seen in the screenshot */
+            /* The global h1 style in styles.css has 'text-align: center'. This overrides it for this specific h1. */
+        }
+
+        /* Original dashboard-specific styles (cards, tables, charts etc.) */
+        .dashboard-card {
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            margin-bottom: 20px;
+        }
+        .dashboard-card.bg-primary { background-color: #007bff !important; color: white; }
+        .dashboard-card.bg-success { background-color: #28a745 !important; color: white; }
+        .dashboard-card.bg-warning { background-color: #ffc107 !important; color: white; } 
+        .dashboard-card.bg-info { background-color: #17a2b8 !important; color: white; }
+        
+        .progress-bar { height: 30px; font-size: 16px; }
+        .table-summary { background-color: #fff3cd; border: 1px solid #ffeeba; border-radius: 5px; }
+        .table-summary th, .table-summary td { border-color: #ffeeba; }
+        
+        .chart-container { 
+            position: relative; 
+            margin: auto; 
+            height: 250px; 
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.85); 
+            border-radius: 8px; 
+            padding:15px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1); 
+        }
+        .card .card-body { padding: 15px; } 
+        .placeholder-text { color: #6c757d; font-style: italic; }
+
+        .card {
+            /* Styles from styles.css are expected here */
+        }
+
+    </style>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const populationCtx = document.getElementById('populationChart');
+    if (populationCtx) {
+        let labels = {{ months|safe }};
+        let data = {{ prisoner_counts|safe }};
+        
+        if (!labels || labels.length === 0) {
+            labels = ['No Data'];
+            data = [0];
+        }
+
+        new Chart(populationCtx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Prisoner Population',
+                    data: data,
+                    backgroundColor: 'rgba(23, 162, 184, 0.2)',
+                    borderColor: 'rgba(23, 162, 184, 1)',
+                    borderWidth: 2,
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { position: 'top', labels: { color: '#333' } },
+                    title: { display: true, text: 'Prisoner Population (Current and Last 5 Months)', color: '#333' }
+                },
+                scales: {
+                    y: { beginAtZero: true, ticks: { stepSize: 1, color: '#333' }, grid: { color: 'rgba(0,0,0,0.1)' } },
+                    x: { ticks: { color: '#333' }, grid: { color: 'rgba(0,0,0,0.1)' } }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-content-bg-wrapper">
+    <div class="container-fluid"> <h1 class="mb-4">Dashboard</h1>
+        
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card dashboard-card bg-primary">
+                    <div class="card-body">
+                        <h5 class="card-title">Total Prisoners</h5>
+                        <h2 class="card-text">{% if total_prisoners is not None %}{{ total_prisoners }}{% else %}0{% endif %}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card bg-success">
+                    <div class="card-body">
+                        <h5 class="card-title">Convicted</h5>
+                        <h2 class="card-text">{% if convicted_count is not None %}{{ convicted_count }}{% else %}0{% endif %}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card bg-warning">
+                    <div class="card-body">
+                        <h5 class="card-title">Remand</h5>
+                        <h2 class="card-text">{% if remand_count is not None %}{{ remand_count }}{% else %}0{% endif %}</h2>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card dashboard-card bg-info">
+                    <div class="card-body">
+                        <h5 class="card-title">Children</h5>
+                        <h2 class="card-text">{% if children_count is not None %}{{ children_count }}{% else %}0{% endif %}</h2>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Recidivism Rate</h5>
+                        {% if recidivism_rate is not None and total_prisoners > 0 %}
+                            <div class="progress" style="height: 30px;">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: {{ recidivism_rate }}%;" aria-valuenow="{{ recidivism_rate }}" aria-valuemin="0" aria-valuemax="100">{{ recidivism_rate }}%</div>
+                            </div>
+                            <p class="mt-2 text-muted">Percentage of prisoners with previous convictions</p>
+                        {% else %}
+                            <div class="progress" style="height: 30px;">
+                                <div class="progress-bar bg-danger" role="progressbar" style="width: 0%;" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">0%</div>
+                            </div>
+                            <p class="mt-2 placeholder-text">No recidivism data available</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body table-summary">
+                        <h5 class="card-title">Prisoners Summary (as of today)</h5>
+                        <div class="table-responsive">
+                            <table class="table table-bordered">
+                                <thead><tr><th>Category</th><th>Count</th></tr></thead>
+                                <tbody>
+                                    {% if lockup_summary %}
+                                        <tr><td>Male Convicted</td><td>{{ lockup_summary.male_convicted|default:0 }}</td></tr>
+                                        <tr><td>Female Convicted</td><td>{{ lockup_summary.female_convicted|default:0 }}</td></tr>
+                                        <tr><td>Male Remand</td><td>{{ lockup_summary.male_remand|default:0 }}</td></tr>
+                                        <tr><td>Female Remand</td><td>{{ lockup_summary.female_remand|default:0 }}</td></tr>
+                                        <tr><td>Male Murder Convicted</td><td>{{ lockup_summary.male_murder_convicted|default:0 }}</td></tr>
+                                        <tr><td>Female Murder Convicted</td><td>{{ lockup_summary.female_murder_convicted|default:0 }}</td></tr>
+                                        <tr><td>Male Foreigner Remand</td><td>{{ lockup_summary.male_foreigner_remand|default:0 }}</td></tr>
+                                        <tr><td>Female Foreigner Remand</td><td>{{ lockup_summary.female_foreigner_remand|default:0 }}</td></tr>
+                                        <tr><td>Male Foreigner Remand Murder</td><td>{{ lockup_summary.male_foreigner_remand_murder|default:0 }}</td></tr>
+                                        <tr><td>Female Foreigner Remand Murder</td><td>{{ lockup_summary.female_foreigner_remand_murder|default:0 }}</td></tr>
+                                        <tr><td>Children</td><td>{{ lockup_summary.children|default:0 }}</td></tr>
+                                        <tr><td><strong>Grand Total</strong></td><td><strong>{{ lockup_summary.grand_total|default:0 }}</strong></td></tr>
+                                    {% else %}
+                                        <tr><td colspan="2" class="placeholder-text">No prisoner summary data available</td></tr>
+                                    {% endif %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% if user.is_superuser %}
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Recent Activities</h5>
+                        {% if recent_activities %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead><tr><th>User</th><th>Action</th><th>Details</th><th>Time</th></tr></thead>
+                                    <tbody>
+                                        {% for activity in recent_activities %}
+                                        <tr>
+                                            <td>{{ activity.user.get_full_name|default:"Unknown User" }}</td>
+                                            <td>{{ activity.get_action_display }}</td>
+                                            <td>{{ activity.details|truncatechars:30 }}</td>
+                                            <td>{{ activity.timestamp|timesince }} ago</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        {% else %}
+                            <p class="placeholder-text">No recent activities to display.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+        
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card"> <div class="card-body chart-container"> <canvas id="populationChart" height="250"></canvas>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">Upcoming Releases (Next 30 Days)</h5>
+                        {% if upcoming_releases %}
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead><tr><th>Prisoner</th><th>Release Date</th><th>Offense</th></tr></thead>
+                                    <tbody>
+                                        {% for release in upcoming_releases %}
+                                        <tr>
+                                            <td><a href="{% url 'prisoner_detail' release.prisoner.id %}">{{ release.prisoner.prisoner_number }} - {{ release.prisoner.full_name }}</a></td>
+                                            <td>{{ release.date_of_release_on_remission|date:"Y-m-d" }}</td>
+                                            <td>{{ release.offense|truncatechars:30 }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <a href="{% url 'upcoming_releases_report' %}" class="btn btn-sm btn-outline-primary">View Full Report</a>
+                        {% else %}
+                            <p class="placeholder-text">No upcoming releases in the next 30 days.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div></div> {% endblock %}

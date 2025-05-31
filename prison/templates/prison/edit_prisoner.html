@@ -1,0 +1,96 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Edit Prisoner - {{ prisoner.prisoner_number }}{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-4">Edit Prisoner: {{ prisoner.prisoner_number }}</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="mb-3">Basic Information</h5>
+                        <div class="mb-3">
+                            {{ form.prisoner_number.label_tag }}
+                            {{ form.prisoner_number }}
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-4">
+                                {{ form.first_name.label_tag }}
+                                {{ form.first_name }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.middle_name.label_tag }}
+                                {{ form.middle_name }}
+                            </div>
+                            <div class="col-md-4">
+                                {{ form.surname.label_tag }}
+                                {{ form.surname }}
+                            </div>
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.sex.label_tag }}
+                                {{ form.sex }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.age.label_tag }}
+                                {{ form.age }}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="mb-3">Prison Details</h5>
+                        <div class="mb-3">
+                            {{ form.prisoner_class.label_tag }}
+                            {{ form.prisoner_class }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.prison_station.label_tag }}
+                            {{ form.prison_station }}
+                        </div>
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                {{ form.block_number.label_tag }}
+                                {{ form.block_number }}
+                            </div>
+                            <div class="col-md-6">
+                                {{ form.cell_number.label_tag }}
+                                {{ form.cell_number }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            {{ form.date_admitted.label_tag }}
+                            {{ form.date_admitted }}
+                        </div>
+                        <div class="mb-3">
+                            {{ form.image.label_tag }}
+                            {{ form.image }}
+                            {% if prisoner.image %}
+                                <div class="mt-2">
+                                    <small>Current Image:</small><br>
+                                    <img src="{{ prisoner.image.url }}" alt="Current image" style="max-height: 100px;">
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Update Prisoner</button>
+                    <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

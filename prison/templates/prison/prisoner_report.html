@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Prisoner Report - {{ prisoner.prisoner_number }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; font-size: 10pt; } /* Adjusted base font size */
+        .header { text-align: center; margin-bottom: 30px; }
+        .header h1 { margin-bottom: 5px; color: #333; font-size: 18pt; } /* Adjusted header font size */
+        .header .subtitle { font-size: 12pt; color: #666; } /* Adjusted subtitle font size */
+        .section { margin-bottom: 25px; border: 1px solid #eee; border-radius: 8px; overflow: hidden; }
+        .section-title { 
+            background-color: #f0f0f0; 
+            padding: 10px 15px; 
+            font-weight: bold;
+            border-bottom: 1px solid #ddd;
+            color: #333;
+            font-size: 12pt; /* Adjusted section title font size */
+        }
+        table { 
+            width: 100%; 
+            border-collapse: collapse; 
+            margin-bottom: 0; 
+            table-layout: fixed; /* Ensures consistent column widths */
+        }
+        table th, table td { 
+            padding: 8px 12px; /* Slightly reduced padding */
+            border: 1px solid #ddd; 
+            text-align: left; 
+            vertical-align: top;
+            word-wrap: break-word; /* Ensures long words break and wrap */
+        }
+        table th { 
+            background-color: #f9f9f9; 
+            width: 25%; /* Adjusted width for field names */
+            font-weight: bold; 
+        }
+        table td {
+            width: 25%; /* Default width for data cells */
+        }
+        table td[colspan="3"] { /* Specific rule for cells spanning 3 columns */
+            width: 75%; 
+        }
+        .signature { margin-top: 50px; text-align: right; padding-right: 20px; }
+        .signature-line { width: 250px; border-top: 1px solid #000; margin: 40px 0 5px auto; }
+        .footer { margin-top: 50px; font-size: 9pt; text-align: center; color: #666; border-top: 1px solid #eee; padding-top: 10px; } /* Adjusted footer font size */
+        .photo-container { text-align: center; margin-bottom: 20px; }
+        .prisoner-photo { 
+            max-width: 100px; 
+            max-height: 100px; 
+            border: 2px solid #ddd; 
+            border-radius: 5px; 
+            object-fit: cover; 
+        }
+        .badge {
+            display: inline-block;
+            padding: 0.35em 0.65em;
+            font-size: 0.75em;
+            font-weight: 700;
+            line-height: 1;
+            text-align: center;
+            white-space: nowrap;
+            vertical-align: baseline;
+            border-radius: 0.25rem;
+            color: #fff;
+        }
+        .bg-success { background-color: #28a745; }
+        .bg-warning { background-color: #ffc107; color: #212529; }
+        .bg-danger { background-color: #dc3545; }
+        .bg-info { background-color: #17a2b8; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Malawi Prison Service</h1>
+        <div class="subtitle">{{ prisoner.prison_station.name }}</div>
+        <h2>Prisoner Report</h2>
+    </div>
+
+    <div class="photo-container">
+        {% if prisoner.image %}
+            <img src="{{ prisoner.image.path }}" class="prisoner-photo" alt="Prisoner Photo">
+        {% else %}
+            <div style="width:50px;height:50px;border:1px solid #ddd;display:inline-block;line-height:50px;text-align:center;background-color:#f8f9fa;color:#6c757d;border-radius:5px;">
+                No Photo Available
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="section">
+        <div class="section-title">Basic Information</div>
+        <table>
+            <tr>
+                <th>Prisoner Number</th>
+                <td>{{ prisoner.prisoner_number }}</td>
+                <th>Full Name</th>
+                <td>{{ prisoner.full_name }}</td>
+            </tr>
+            <tr>
+                <th>Sex</th>
+                <td>{{ prisoner.get_sex_display }}</td>
+                <th>Age</th>
+                <td>{{ prisoner.age }}</td>
+            </tr>
+            <tr>
+                <th>Prisoner Class</th>
+                <td>
+                    <span class="badge {% if prisoner.prisoner_class == 'convicted' %}bg-success{% else %}bg-warning{% endif %}">
+                        {{ prisoner.get_prisoner_class_display }}
+                    </span>
+                </td>
+                <th>Prison Station</th>
+                <td>{{ prisoner.prison_station.name }}</td>
+            </tr>
+            <tr>
+                <th>Block/Cell</th>
+                <td>{{ prisoner.block_number }} / {{ prisoner.cell_number }}</td>
+                <th>Date Admitted</th>
+                <td>{{ prisoner.date_admitted|date:"Y-m-d" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    {% if prisoner.prisoner_class == 'convicted' %}
+    <div class="section">
+        <div class="section-title">Sentence Information</div>
+        <table>
+            <tr>
+                <th>Offense</th>
+                <td colspan="3">{{ convicted_details.offense }}</td>
+            </tr>
+            <tr>
+                <th>Court</th>
+                <td>{{ convicted_details.court }}</td>
+                <th>Sentence</th>
+                <td>{{ convicted_details.sentence }} months</td>
+            </tr>
+            <tr>
+                <th>Date of Committal</th>
+                <td>{{ convicted_details.date_of_committal|date:"Y-m-d" }}</td>
+                <th>With Effect From</th>
+                <td>{{ convicted_details.wef_date|date:"Y-m-d" }}</td>
+            </tr>
+            <tr>
+                <th>Original Release Date</th>
+                <td>{{ convicted_details.date_of_release|date:"Y-m-d" }}</td>
+                <th>Release on Remission</th>
+                <td>{{ convicted_details.date_of_release_on_remission|date:"Y-m-d" }}</td>
+            </tr>
+            {% if convicted_details.reduction_months > 0 %}
+            <tr>
+                <th>Sentence Reduction</th>
+                <td colspan="3">{{ convicted_details.reduction_months }} months ({{ convicted_details.reduction_notes }})</td>
+            </tr>
+            {% endif %}
+            <tr>
+                <th>Confirmation Status</th>
+                <td>{{ convicted_details.confirmation_status|yesno:"Confirmed,Not Confirmed" }}</td>
+                <th>Notes</th>
+                <td>{{ convicted_details.notes|default:"N/A" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Risk Assessment</div>
+        <table>
+            <tr>
+                <th>Previous Conviction</th>
+                <td>{{ risk_assessment.previous_conviction|yesno:"Yes,No" }}</td>
+                <th>Previous Convictions Count</th>
+                <td>{{ risk_assessment.previous_convictions_count|default:"N/A" }}</td>
+            </tr>
+            <tr>
+                <th>Risk Level</th>
+                <td colspan="3">
+                    {% if risk_assessment.risk_level == 'high' %}
+                        <span class="badge bg-danger">High</span>
+                    {% elif risk_assessment.risk_level == 'medium' %}
+                        <span class="badge bg-warning">Medium</span>
+                    {% elif risk_assessment.risk_level == 'low' %}
+                        <span class="badge bg-success">Low</span>
+                    {% else %}
+                        <span class="badge bg-info">Need Support</span>
+                    {% endif %}
+                </td>
+            </tr>
+        </table>
+    </div>
+    
+    <div class="section">
+        <div class="section-title">Rehabilitation Program</div>
+        <table>
+            <tr>
+                <th>Employed in Program</th>
+                <td>{{ rehabilitation.employed_in_program|yesno:"Yes,No" }}</td>
+                <th>Program Name</th>
+                <td>{{ rehabilitation.program_name|default:"N/A" }}</td>
+            </tr>
+            <tr>
+                <th>Program Level</th>
+                <td colspan="3">{{ rehabilitation.get_program_level_display|default:"N/A" }}</td>
+            </tr>
+        </table>
+    </div>
+    {% else %} {# prisoner.prisoner_class == 'remand' #}
+    <div class="section">
+        <div class="section-title">Remand Information</div>
+        <table>
+            <tr>
+                <th>Court Case Number</th>
+                <td>{{ remand_details.court_case_number }}</td>
+                <th>Next Court Date</th>
+                <td>{{ remand_details.next_court_date|date:"Y-m-d" }}</td>
+            </tr>
+            <tr>
+                <th>Remand Extensions</th>
+                <td>{{ remand_details.remand_extensions }}</td>
+                <th>Offense</th>
+                <td>{{ remand_details.offense }}</td>
+            </tr>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="section">
+        <div class="section-title">Personal Particulars</div>
+        <table>
+            <tr>
+                <th>Nationality</th>
+                <td>{{ particulars.get_nationality_display }}</td>
+                <th>District</th>
+                <td>{{ particulars.district }}</td>
+            </tr>
+            <tr>
+                <th>Chief</th>
+                <td>{{ particulars.chief }}</td>
+                <th>Village</th>
+                <td>{{ particulars.village }}</td>
+            </tr>
+            <tr>
+                <th>Religion</th>
+                <td>{{ particulars.get_religion_display }}</td>
+                <th>Denomination</th>
+                <td>{{ particulars.denomination|default:"N/A" }}</td>
+            </tr>
+            <tr>
+                <th>Father's Name</th>
+                <td>{{ particulars.fathers_name }}</td>
+                <th>Mother's Name</th>
+                <td>{{ particulars.mothers_name }}</td>
+            </tr>
+            <tr>
+                <th>Marital Status</th>
+                <td>{{ particulars.married|yesno:"Married,Single" }}</td>
+                <th>Spouse Name</th>
+                <td>{{ particulars.spouse_name|default:"N/A" }}</td>
+            </tr>
+            <tr>
+                <th>Spouse Location</th>
+                <td>{{ particulars.spouse_location|default:"N/A" }}</td>
+                <th>Next of Kin</th>
+                <td>{{ particulars.next_of_kin }}</td>
+            </tr>
+            <tr>
+                <th>Next of Kin Location</th>
+                <td>{{ particulars.next_of_kin_location }}</td>
+                <th>Mobile Number</th>
+                <td>{{ particulars.mobile_number|default:"N/A" }}</td>
+            </tr>
+            <tr>
+                <th>Education Level</th>
+                <td>{{ particulars.get_education_level_display }}</td>
+                <th>Literate</th>
+                <td>{{ particulars.literate|yesno:"Yes,No" }}</td>
+            </tr>
+            <tr>
+                <th>Profession</th>
+                <td>{{ particulars.profession|default:"N/A" }}</td>
+                <th>Past Occupation</th>
+                <td>{{ particulars.past_occupation|default:"N/A" }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Physical Characteristics</div>
+        <table>
+            <tr>
+                <th>Height</th>
+                <td>{{ physical.height }} cm</td>
+                <th>Weight</th>
+                <td>{{ physical.weight }} kg</td>
+            </tr>
+            <tr>
+                <th>Body Build</th>
+                <td>{{ physical.get_body_build_display }}</td>
+                <th>Skin Color</th>
+                <td>{{ physical.get_skin_color_display }}</td>
+            </tr>
+            <tr>
+                <th>Eyes Color</th>
+                <td>{{ physical.eyes_color }}</td>
+                <th>Health Status</th>
+                <td>{{ physical.get_health_status_display }}</td>
+            </tr>
+            {% if prisoner.sex == 'female' %}
+            <tr>
+                <th>Has Children</th>
+                <td>{{ physical.has_child|yesno:"Yes,No" }}</td>
+                <th>Children Count</th>
+                <td>{{ physical.children_count|default:"N/A" }}</td>
+            </tr>
+            {% endif %}
+        </table>
+    </div>
+
+    {% if transfers %}
+    <div class="section">
+        <div class="section-title">Transfer History</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Date</th>
+                    <th>From Prison</th>
+                    <th>To Prison</th>
+                    <th>Reason</th>
+                    <th>Transferred By</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for transfer in transfers %}
+                <tr>
+                    <td>{{ transfer.transfer_date|date:"Y-m-d" }}</td>
+                    <td>{{ transfer.from_prison.name }}</td>
+                    <td>{{ transfer.to_prison.name }}</td>
+                    <td>{{ transfer.reason }}</td>
+                    <td>{{ transfer.transferred_by.get_full_name }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% endif %}
+
+    <div class="section">
+        <div class="section-title">Admission Fingerprint</div>
+        <div style="height: 100px; border: 1px solid #ddd; margin-bottom: 20px; background-color:#f8f9fa;"></div>
+        <div class="signature">
+            <div class="signature-line"></div>
+            <div>Prison Officer's Signature & Stamp</div>
+            <div>Date: _________________________</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        Generated on {{ today|date:"Y-m-d" }} by {{ user.get_full_name }} ({{ user.get_rank_display }})
+    </div>
+</body>
+</html>

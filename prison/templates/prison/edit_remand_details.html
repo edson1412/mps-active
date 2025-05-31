@@ -1,0 +1,49 @@
+{% extends "prison/base.html" %}
+{% load crispy_forms_tags %}
+
+{% block title %}Edit Remand Details - {{ prisoner.prisoner_number }}{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-4">Edit All Details for Remand Prisoner: {{ prisoner.full_name }}</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <form method="post" enctype="multipart/form-data">
+                {% csrf_token %}
+
+                <h5 class="section-heading basic-info-heading"><i class="fas fa-user-edit"></i> Basic Information</h5>
+                <div class="mb-4 p-3 border rounded">
+                    {{ prisoner_form|crispy }}
+                </div>
+
+                <h5 class="section-heading court-info-heading"><i class="fas fa-balance-scale"></i> Remand & Court Details</h5>
+                <div class="mb-4 p-3 border rounded">
+                    {{ form|crispy }}
+                </div>
+
+                <h5 class="section-heading particulars-heading"><i class="fas fa-address-card"></i> Personal Particulars</h5>
+                <div class="mb-4 p-3 border rounded">
+                    {{ particulars_form|crispy }}
+                </div>
+
+                <h5 class="section-heading physical-heading"><i class="fas fa-child"></i> Physical Characteristics</h5>
+                <div class="mb-4 p-3 border rounded">
+                    {{ physical_form|crispy }}
+                </div>
+                
+                <div class="mt-4 button-group">
+                    <button type="submit" class="btn btn-primary">Update All Details</button>
+                    <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

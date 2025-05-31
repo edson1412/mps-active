@@ -1,0 +1,406 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Prisoner Details - {{ prisoner.prisoner_number }}{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Prisoner Details: {{ prisoner.prisoner_number }}</h1>
+       <div>
+            {% if prisoner.prisoner_class == 'convicted' %}
+                <a href="{% url 'edit_convicted_details' prisoner.id %}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-pencil-square"></i> Edit All Details
+                </a>
+                <a href="{% url 'apply_sentence_reduction' prisoner.id %}" class="btn btn-outline-warning me-2">
+                    <i class="bi bi-clock-history"></i> Apply Sentence Reduction
+                </a>
+            {% else %}
+                 <a href="{% url 'edit_remand_details' prisoner.id %}" class="btn btn-outline-primary me-2">
+                    <i class="bi bi-pencil-square"></i> Edit All Details
+                </a>
+            {% endif %}
+
+            <a href="{% url 'generate_prisoner_report' prisoner.id %}" class="btn btn-outline-info">
+                <i class="bi bi-file-earmark-pdf"></i> Generate Report
+            </a>
+        </div>
+    </div>
+    
+    <div class="row">
+        <!-- Basic Info Column -->
+        <div class="col-md-4">
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Basic Information</h5>
+                </div>
+                <div class="card-body text-center">
+                    {% if prisoner.image %}
+                        <img src="{{ prisoner.image.url }}" alt="{{ prisoner.full_name }}" class="prisoner-image mb-3">
+                    {% else %}
+                        <div class="bg-light d-flex align-items-center justify-content-center mb-3" style="width:150px;height:150px;margin:0 auto;">
+                            <i class="bi bi-person-fill" style="font-size: 3rem;"></i>
+                        </div>
+                    {% endif %}
+                    <h4>{{ prisoner.full_name }}</h4>
+                    <p class="text-muted">{{ prisoner.get_sex_display }}, {{ prisoner.age }} years</p>
+                    
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Prisoner Number</th>
+                            <td>{{ prisoner.prisoner_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Class</th>
+                            <td>
+                                <span class="badge {% if prisoner.prisoner_class == 'convicted' %}bg-success{% else %}bg-warning{% endif %}">
+                                    {{ prisoner.get_prisoner_class_display }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>Prison Station</th>
+                            <td>{{ prisoner.prison_station.name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Block/Cell</th>
+                            <td>{{ prisoner.block_number }} / {{ prisoner.cell_number }}</td>
+                        </tr>
+                        <tr>
+                            <th>Date Admitted</th>
+                            <td>{{ prisoner.date_admitted|date:"Y-m-d" }}</td>
+                        </tr>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Physical Characteristics -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Physical Characteristics</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-sm">
+                        <tr>
+                            <th>Height</th>
+                            <td>{{ physical.height }} cm</td>
+                        </tr>
+                        <tr>
+                            <th>Weight</th>
+                            <td>{{ physical.weight }} kg</td>
+                        </tr>
+                        <tr>
+                            <th>Body Build</th>
+                            <td>{{ physical.get_body_build_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Skin Color</th>
+                            <td>{{ physical.get_skin_color_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Eyes Color</th>
+                            <td>{{ physical.eyes_color }}</td>
+                        </tr>
+                        <tr>
+                            <th>Health Status</th>
+                            <td>{{ physical.get_health_status_display }}</td>
+                        </tr>
+                        {% if prisoner.sex == 'female' %}
+                        <tr>
+                            <th>Has Children</th>
+                            <td>{{ physical.has_child|yesno:"Yes,No" }}</td>
+                        </tr>
+                        {% if physical.has_child %}
+                        <tr>
+                            <th>Children Count</th>
+                            <td>{{ physical.children_count }}</td>
+                        </tr>
+                        {% endif %}
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Details Column -->
+        <div class="col-md-8">
+            {% if prisoner.prisoner_class == 'convicted' %}
+                <!-- Convicted Prisoner Details -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Sentence Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <tr>
+                                <th>Offense</th>
+                                <td>{{ convicted_details.offense }}</td>
+                            </tr>
+                            <tr>
+                                <th>Court</th>
+                                <td>{{ convicted_details.court }}</td>
+                            </tr>
+                            <tr>
+                                <th>Sentence</th>
+                                <td>{{ convicted_details.sentence }} months</td>
+                            </tr>
+                            <tr>
+                                <th>Date of Committal</th>
+                                <td>{{ convicted_details.date_of_committal|date:"Y-m-d" }}</td>
+                            </tr>
+                            <tr>
+                                <th>With Effect From</th>
+                                <td>{{ convicted_details.wef_date|date:"Y-m-d" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Release Date</th>
+                                <td>{{ convicted_details.date_of_release|date:"Y-m-d" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Release on Remission</th>
+                                <td>{{ convicted_details.date_of_release_on_remission|date:"Y-m-d" }}</td>
+                            </tr>
+                            {% if convicted_details.reduction_months > 0 %}
+                            <tr>
+                                <th>Sentence Reduction</th>
+                                <td>{{ convicted_details.reduction_months }} months ({{ convicted_details.reduction_notes }})</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Confirmation Status</th>
+                                <td>{{ convicted_details.confirmation_status|yesno:"Confirmed,Not Confirmed" }}</td>
+                            </tr>
+                            {% if convicted_details.notes %}
+                            <tr>
+                                <th>Notes</th>
+                                <td>{{ convicted_details.notes }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Risk Assessment -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Risk Assessment</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <tr>
+                                <th>Previous Conviction</th>
+                                <td>{{ risk_assessment.previous_conviction|yesno:"Yes,No" }}</td>
+                            </tr>
+                            {% if risk_assessment.previous_conviction %}
+                            <tr>
+                                <th>Previous Convictions Count</th>
+                                <td>{{ risk_assessment.previous_convictions_count }}</td>
+                            </tr>
+                            {% endif %}
+                            <tr>
+                                <th>Risk Level</th>
+                                <td>
+                                    {% if risk_assessment.risk_level == 'high' %}
+                                        <span class="badge bg-danger">High</span>
+                                    {% elif risk_assessment.risk_level == 'medium' %}
+                                        <span class="badge bg-warning">Medium</span>
+                                    {% elif risk_assessment.risk_level == 'low' %}
+                                        <span class="badge bg-success">Low</span>
+                                    {% else %}
+                                        <span class="badge bg-info">Need Support</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+                
+                <!-- Rehabilitation Program -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Rehabilitation Program</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <tr>
+                                <th>Employed in Program</th>
+                                <td>{{ rehabilitation.employed_in_program|yesno:"Yes,No" }}</td>
+                            </tr>
+                            {% if rehabilitation.employed_in_program %}
+                            <tr>
+                                <th>Program Name</th>
+                                <td>{{ rehabilitation.program_name }}</td>
+                            </tr>
+                            <tr>
+                                <th>Program Level</th>
+                                <td>{{ rehabilitation.get_program_level_display }}</td>
+                            </tr>
+                            {% endif %}
+                        </table>
+                    </div>
+                </div>
+            {% else %}
+                <!-- Remand Prisoner Details -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h5 class="mb-0">Remand Information</h5>
+                    </div>
+                    <div class="card-body">
+                        <table class="table">
+                            <tr>
+                                <th>Court Case Number</th>
+                                <td>{{ remand_details.court_case_number }}</td>
+                            </tr>
+                            <tr>
+                                <th>Next Court Date</th>
+                                <td>{{ remand_details.next_court_date|date:"Y-m-d" }}</td>
+                            </tr>
+                            <tr>
+                                <th>Remand Extensions</th>
+                                <td>{{ remand_details.remand_extensions }}</td>
+                            </tr>
+                            <tr>
+                                <th>Offense</th>
+                                <td>{{ remand_details.offense }}</td>
+                            </tr>
+                        </table>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Prisoner Particulars -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Personal Particulars</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table">
+                        <tr>
+                            <th>Nationality</th>
+                            <td>{{ particulars.get_nationality_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>District</th>
+                            <td>{{ particulars.district }}</td>
+                        </tr>
+                        <tr>
+                            <th>Chief</th>
+                            <td>{{ particulars.chief }}</td>
+                        </tr>
+                        <tr>
+                            <th>Village</th>
+                            <td>{{ particulars.village }}</td>
+                        </tr>
+                        <tr>
+                            <th>Religion</th>
+                            <td>{{ particulars.get_religion_display }}</td>
+                        </tr>
+                        {% if particulars.denomination %}
+                        <tr>
+                            <th>Denomination</th>
+                            <td>{{ particulars.denomination }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Father's Name</th>
+                            <td>{{ particulars.fathers_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Mother's Name</th>
+                            <td>{{ particulars.mothers_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Marital Status</th>
+                            <td>{{ particulars.married|yesno:"Married,Single" }}</td>
+                        </tr>
+                        {% if particulars.married %}
+                        <tr>
+                            <th>Spouse Name</th>
+                            <td>{{ particulars.spouse_name }}</td>
+                        </tr>
+                        <tr>
+                            <th>Spouse Location</th>
+                            <td>{{ particulars.spouse_location }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Next of Kin</th>
+                            <td>{{ particulars.next_of_kin }}</td>
+                        </tr>
+                        <tr>
+                            <th>Next of Kin Location</th>
+                            <td>{{ particulars.next_of_kin_location }}</td>
+                        </tr>
+                        {% if particulars.mobile_number %}
+                        <tr>
+                            <th>Mobile Number</th>
+                            <td>{{ particulars.mobile_number }}</td>
+                        </tr>
+                        {% endif %}
+                        <tr>
+                            <th>Education Level</th>
+                            <td>{{ particulars.get_education_level_display }}</td>
+                        </tr>
+                        <tr>
+                            <th>Literate</th>
+                            <td>{{ particulars.literate|yesno:"Yes,No" }}</td>
+                        </tr>
+                        {% if particulars.profession %}
+                        <tr>
+                            <th>Profession</th>
+                            <td>{{ particulars.profession }}</td>
+                        </tr>
+                        {% endif %}
+                        {% if particulars.past_occupation %}
+                        <tr>
+                            <th>Past Occupation</th>
+                            <td>{{ particulars.past_occupation }}</td>
+                        </tr>
+                        {% endif %}
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Transfer History -->
+            {% if transfers %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">Transfer History</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>From</th>
+                                    <th>To</th>
+                                    <th>Reason</th>
+                                    <th>By</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for transfer in transfers %}
+                                <tr>
+                                    <td>{{ transfer.transfer_date|date:"Y-m-d" }}</td>
+                                    <td>{{ transfer.from_prison.name }}</td>
+                                    <td>{{ transfer.to_prison.name }}</td>
+                                    <td>{{ transfer.reason }}</td>
+                                    <td>{{ transfer.transferred_by.get_full_name }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,77 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Medical Record Details - {{ medical_record.prisoner.full_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h1>Medical Record for: {{ medical_record.prisoner.full_name }} ({{ medical_record.prisoner.prisoner_number }})</h1>
+        <div>
+            <a href="{% url 'medical_record_edit' medical_record.id %}" class="btn btn-outline-primary me-2">
+                <i class="bi bi-pencil-square"></i> Edit Record
+            </a>
+            <a href="{% url 'medical_record_list' %}" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left"></i> Back to List
+            </a>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="mb-0">Record Details</h5>
+        </div>
+        <div class="card-body">
+            <table class="table table-sm table-borderless">
+                <tr>
+                    <th>Prisoner:</th>
+                    <td><a href="{% url 'prisoner_detail' medical_record.prisoner.id %}">{{ medical_record.prisoner.full_name }} ({{ medical_record.prisoner.prisoner_number }})</a></td>
+                </tr>
+                <tr>
+                    <th>Record Date:</th>
+                    <td>{{ medical_record.record_date|date:"Y-m-d" }}</td>
+                </tr>
+                <tr>
+                    <th>Category:</th>
+                    <td>{{ medical_record.get_category_display }}</td>
+                </tr>
+                <tr>
+                    <th>Diagnosis:</th>
+                    <td>{{ medical_record.diagnosis|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Treatment:</th>
+                    <td>{{ medical_record.treatment|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Medication:</th>
+                    <td>{{ medical_record.medication|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Notes:</th>
+                    <td>{{ medical_record.notes|default:"N/A" }}</td>
+                </tr>
+                <tr>
+                    <th>Recorded By:</th>
+                    <td>{{ medical_record.recorded_by.get_full_name|default:medical_record.recorded_by.username }}</td>
+                </tr>
+                <tr>
+                    <th>Created At:</th>
+                    <td>{{ medical_record.created_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+                <tr>
+                    <th>Last Updated:</th>
+                    <td>{{ medical_record.updated_at|date:"Y-m-d H:i" }}</td>
+                </tr>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

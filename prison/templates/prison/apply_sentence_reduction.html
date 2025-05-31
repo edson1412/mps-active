@@ -1,0 +1,46 @@
+{% extends "prison/base.html" %}
+
+{% block title %}Apply Sentence Reduction{% endblock %}
+
+{% block content %}
+<style>
+    body {
+        background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
+    }
+</style>
+
+<div class="container-fluid">
+    <h1 class="mb-4">Apply Sentence Reduction for {{ prisoner.prisoner_number }}</h1>
+    
+    <div class="card">
+        <div class="card-body">
+            <div class="alert alert-info mb-4">
+                <strong>Current Release Dates:</strong><br>
+                Original Release: {{ convicted_details.date_of_release|date:"Y-m-d" }}<br>
+                Release on Remission: {{ convicted_details.date_of_release_on_remission|date:"Y-m-d" }}
+            </div>
+            
+            <form method="post">
+                {% csrf_token %}
+                <div class="row">
+                    <div class="col-md-4">
+                        {{ form.reduction_months.label_tag }}
+                        {{ form.reduction_months }}
+                        <small class="form-text text-muted">Number of months to reduce from sentence</small>
+                    </div>
+                    <div class="col-md-8">
+                        {{ form.reduction_notes.label_tag }}
+                        {{ form.reduction_notes }}
+                        <small class="form-text text-muted">Reason for reduction (e.g., presidential pardon)</small>
+                    </div>
+                </div>
+                
+                <div class="mt-4">
+                    <button type="submit" class="btn btn-primary">Apply Reduction</button>
+                    <a href="{% url 'prisoner_detail' prisoner.id %}" class="btn btn-secondary">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
