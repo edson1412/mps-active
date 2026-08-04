@@ -26,7 +26,7 @@ SECRET_KEY = 'django-insecure-*r+)h4=zf4d%kl)ye5nls)=s3%fia(kvj#-rgw6$**mmia@32f
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['srhqmanagementsystem.pythonanywhere.com', '127.0.0.1', 'localhost']
 
 
 # Application definition
@@ -39,12 +39,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'prison.apps.PrisonConfig',
+    'django_extensions',
     'accounts.apps.AccountsConfig',
     'crispy_forms',
     'crispy_bootstrap5',
- 
 ]
-
 
 CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap5"
 CRISPY_TEMPLATE_PACK = "bootstrap5"
@@ -54,14 +53,8 @@ AUTH_USER_MODEL = 'accounts.CustomUser'
 LOGIN_REDIRECT_URL = 'dashboard'
 LOGOUT_REDIRECT_URL = 'login'
 
-# Add at the bottom
-STATIC_URL = '/static/'
-STATICFILES_DIRS = [BASE_DIR / 'static']
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
@@ -79,8 +72,8 @@ ROOT_URLCONF = 'prison_system.urls'
 
 TEMPLATES = [
     {
-       'BACKEND': 'django.template.backends.django.DjangoTemplates',
-         'DIRS': [BASE_DIR / 'templates'],  # Optional global templates folder
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],  # Optional global templates folder
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -131,17 +124,22 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+# Malawi is in Africa/Blantyre time zone (CAT - Central Africa Time, UTC+2)
+TIME_ZONE = 'Africa/Blantyre'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_L10N = True  # Enable localized formatting
+
+USE_TZ = True  # Important to keep as True for timezone awareness
 
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
-STATIC_URL = 'static/'
+STATIC_URL = '/static/'
+STATICFILES_DIRS = [BASE_DIR / 'static']
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
@@ -165,9 +163,24 @@ LOGGING = {
     },
 }
 
-STORAGES = {
-    # ...
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+# Security settings for production
+#if not DEBUG:
+ #   SECURE_SSL_REDIRECT = True
+  #  SESSION_COOKIE_SECURE = True
+   # CSRF_COOKIE_SECURE = True
+    #SECURE_BROWSER_XSS_FILTER = True
+    #SECURE_CONTENT_TYPE_NOSNIFF = True
+    #SECURE_HSTS_SECONDS = 31536000  # 1 year
+    #SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    #SECURE_HSTS_PRELOAD = True
+    #SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Session settings
+# Set session to expire when browser is closed
+SESSION_EXPIRE_AT_BROWSER_CLOSE = True
+
+# Or set a specific timeout in seconds (e.g., 30 minutes)
+SESSION_COOKIE_AGE = 30 * 60  # 30 minutes in seconds
+
+# Optional: Update the session with each request
+SESSION_SAVE_EVERY_REQUEST = True

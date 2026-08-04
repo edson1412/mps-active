@@ -18,7 +18,7 @@
             <i class="bi bi-plus-circle"></i> Add Medical Record
         </a>
     </div>
-    
+
     <div class="card">
         <div class="card-body">
             <div class="table-responsive">
@@ -29,7 +29,6 @@
                             <th>Record Date</th>
                             <th>Category</th>
                             <th>Diagnosis</th>
-                            <th>Recorded By</th>
                             <th>Actions</th>
                         </tr>
                     </thead>
@@ -40,7 +39,7 @@
                             <td>{{ record.record_date|date:"Y-m-d" }}</td>
                             <td>{{ record.get_category_display }}</td>
                             <td>{{ record.diagnosis|truncatechars:50 }}</td>
-                            <td>{{ record.recorded_by.get_full_name|default:record.recorded_by.username }}</td>
+
                             <td>
                                 <a href="{% url 'medical_record_detail' record.id %}" class="btn btn-sm btn-outline-primary" title="View">
                                     <i class="bi bi-eye"></i>
@@ -62,7 +61,7 @@
                     </tbody>
                 </table>
             </div>
-            
+
             {# Pagination can be added here if needed, similar to prisoner_list.html #}
         </div>
     </div>

@@ -1,3 +1,4 @@
+# models.py
 from django.db import models
 from django.utils import timezone
 from django.contrib.auth import get_user_model
@@ -6,9 +7,12 @@ from django.core.validators import MinValueValidator
 from django.db.models import Count, Sum
 import math
 from django.conf import settings
-# Removed: from .models import CustomUser # This was causing the circular import
+from django.core.exceptions import ValidationError
+import base64
+import hashlib
+import json
 
-User = get_user_model() # This correctly gets your custom user model
+User = get_user_model()
 
 class PrisonStation(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -17,12 +21,12 @@ class PrisonStation(models.Model):
     capacity = models.PositiveIntegerField()
     date_established = models.DateField()
     created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, # Good practice for model definitions
+        settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,
         null=True,
         related_name='created_stations'
     )
-    created_at = models.DateTimeField(null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return self.name
@@ -30,7 +34,7 @@ class PrisonStation(models.Model):
     class Meta:
         verbose_name = "Prison Station"
         verbose_name_plural = "Prison Stations"
-
+        
 class Prisoner(models.Model):
     PRISONER_CLASS_CHOICES = [
         ('convicted', 'Convicted'),
@@ -54,20 +58,115 @@ class Prisoner(models.Model):
     block_number = models.CharField(max_length=10)
     cell_number = models.CharField(max_length=10)
     image = models.ImageField(upload_to='prisoner_images/', blank=True, null=True)
+    document = models.FileField(upload_to='prisoner_documents/', blank=True, null=True,
+        help_text="Attach PDF document (court orders, medical reports, etc.)")
     date_admitted = models.DateField(default=timezone.now)
     is_active = models.BooleanField(default=True)
+    date_released = models.DateField(blank=True, null=True) 
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_prisoners')
     last_modified = models.DateTimeField(auto_now=True)
+
+    # ============ BIOMETRIC / FINGERPRINT FIELDS ============
+    fingerprint_template = models.TextField(blank=True, null=True, 
+        help_text="Base64 encoded fingerprint template")
+    fingerprint_hash = models.CharField(max_length=64, blank=True, null=True,
+        help_text="SHA-256 hash of fingerprint for quick matching")
+    fingerprint_captured_at = models.DateTimeField(blank=True, null=True)
+    fingerprint_captured_by = models.ForeignKey(
+        User, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='captured_fingerprints'
+    )
+    fingerprint_quality = models.IntegerField(blank=True, null=True, 
+        help_text="Quality score 0-100")
+    fingerprint_device = models.ForeignKey(
+        'FingerprintDevice',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='captured_fingerprints'
+    )
+    
+    # Identity tracking
+    previous_identities = models.ManyToManyField(
+        'self', 
+        symmetrical=False, 
+        blank=True, 
+        related_name='linked_identities'
+    )
+    is_identity_verified = models.BooleanField(default=False,
+        help_text="Indicates if identity has been verified via fingerprint")
+    identity_verified_at = models.DateTimeField(blank=True, null=True)
+    identity_verified_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='verified_identities'
+    )
+    identity_verification_notes = models.TextField(blank=True,
+        help_text="Notes about identity verification process")
+
+    # ============ RECIDIVISM TRACKING ============
+    is_recidivist = models.BooleanField(default=False,
+        help_text="Indicates if this prisoner has been incarcerated before")
+    previous_prisoner_numbers = models.TextField(blank=True,
+        help_text="Comma-separated list of previous prisoner numbers")
+    first_incarceration_date = models.DateField(blank=True, null=True,
+        help_text="Date of first incarceration (if recidivist)")
+    recidivism_detected_at = models.DateTimeField(blank=True, null=True,
+        help_text="When recidivism was detected")
+    recidivism_detected_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='detected_recidivists'
+    )
+    recidivism_notes = models.TextField(blank=True,
+        help_text="Notes about recidivism detection")
 
     def __str__(self):
         return f"{self.prisoner_number} - {self.first_name} {self.surname}"
 
     @property
+    def has_fingerprint(self):
+        return bool(self.fingerprint_template and self.fingerprint_hash)
+
+    @property
     def full_name(self):
         return f"{self.first_name} {self.middle_name} {self.surname}".strip()
 
+    @property
+    def is_biometrically_verified(self):
+        return self.is_identity_verified and self.has_fingerprint
+
+    def get_fingerprint_metadata(self):
+        """Get fingerprint metadata as dictionary"""
+        if not self.has_fingerprint:
+            return None
+        return {
+            'has_fingerprint': True,
+            'quality': self.fingerprint_quality,
+            'captured_at': self.fingerprint_captured_at.isoformat() if self.fingerprint_captured_at else None,
+            'captured_by': self.fingerprint_captured_by.username if self.fingerprint_captured_by else None,
+            'device': self.fingerprint_device.name if self.fingerprint_device else None,
+            'is_verified': self.is_identity_verified
+        }
+
+    def save(self, *args, **kwargs):
+        # Generate fingerprint hash from template if not set
+        if self.fingerprint_template and not self.fingerprint_hash:
+            self.fingerprint_hash = hashlib.sha256(
+                self.fingerprint_template.encode()
+            ).hexdigest()
+        super().save(*args, **kwargs)
+
+
 class ConvictedPrisoner(models.Model):
-    OFFENSE_CHOICES = sorted([ # Sorted alphabetically for better UX
+    OFFENSE_CHOICES = sorted([
     ('Libel contrary to section 200 of the Penal Code', 'Libel contrary to section 200 of the Penal Code'),
     ('Publication of defamatory matter concerning a dead person without consent contrary to section 201 of the Penal Code', 'Publication of defamatory matter concerning a dead person without consent contrary to section 201 of the Penal Code'),
     ('Manslaughter contrary to section 208 of the Penal Code', 'Manslaughter contrary to section 208 of the Penal Code'),
@@ -297,9 +396,9 @@ class ConvictedPrisoner(models.Model):
     date_of_release = models.DateField(blank=True, null=True)
     date_of_release_on_remission = models.DateField(blank=True, null=True)
     confirmation_status = models.BooleanField(default=False)
-    notes = models.CharField(blank=True) # Consider models.TextField if notes can be long
+    notes = models.CharField(blank=True)
     reduction_months = models.FloatField(default=0, blank=True, validators=[MinValueValidator(0)])
-    reduction_notes = models.CharField(blank=True) # Consider models.TextField
+    reduction_notes = models.CharField(blank=True)
 
     def save(self, *args, **kwargs):
         AVG_DAYS_PER_MONTH = 30.4375
@@ -310,8 +409,8 @@ class ConvictedPrisoner(models.Model):
             sentence_days = int(sentence_fraction * AVG_DAYS_PER_MONTH)
             self.date_of_release = adjusted_wef + relativedelta(months=sentence_months_val, days=sentence_days)
 
-        if self.date_of_release: # Must be calculated first
-            remission_months_total = self.sentence / 3
+        if self.date_of_release:
+            remission_months_total = self.sentence / 3            
             remission_months_val = int(remission_months_total)
             remission_fraction = remission_months_total - remission_months_val
             remission_days = int(remission_fraction * AVG_DAYS_PER_MONTH)
@@ -325,7 +424,7 @@ class ConvictedPrisoner(models.Model):
         super().save(*args, **kwargs)
 
 class RemandPrisoner(models.Model):
-    OFFENSE_CHOICES = ConvictedPrisoner.OFFENSE_CHOICES # Use the same choices
+    OFFENSE_CHOICES = ConvictedPrisoner.OFFENSE_CHOICES
 
     prisoner = models.OneToOneField(Prisoner, on_delete=models.CASCADE, primary_key=True, related_name='remand_details')
     court_case_number = models.CharField(max_length=50)
@@ -369,7 +468,7 @@ class PrisonerParticulars(models.Model):
         ('burundi', 'Burundi'),
         ('rwandan', 'Rwandan'),
         ('botswana', 'Botswana'),
-         ('other', 'Other'), # Added 'Other'
+        ('other', 'Other'),
     ]
 
     RELIGION_CHOICES = [
@@ -433,7 +532,7 @@ class PhysicalCharacteristics(models.Model):
         ('black', 'Black'),
         ('blue', 'Blue'),
         ('green', 'Green'),
-        ('other', 'Other'), # Added 'Other'
+        ('other', 'Other'),
     ]
 
     HEALTH_CHOICES = [
@@ -444,7 +543,7 @@ class PhysicalCharacteristics(models.Model):
         ('ptsd', 'PTSD'),
         ('stis', 'STIs'),
         ('malnutrition', 'Malnutrition'),
-        ('other', 'Other'), # Added 'Other'
+        ('other', 'Other'),
     ]
 
     prisoner = models.OneToOneField(Prisoner, on_delete=models.CASCADE, primary_key=True, related_name='physical')
@@ -453,10 +552,10 @@ class PhysicalCharacteristics(models.Model):
     body_build = models.CharField(max_length=20, choices=BODY_BUILD_CHOICES)
     skin_color = models.CharField(max_length=20, choices=SKIN_COLOR_CHOICES)
     eyes_color = models.CharField(max_length=20, choices=EYES_COLOR_CHOICES)
-    head_abnormalities = models.CharField(max_length=100, blank=True) # Consider TextField
+    head_abnormalities = models.CharField(max_length=100, blank=True)
     health_status = models.CharField(max_length=20, choices=HEALTH_CHOICES, default='none')
     circumcised = models.BooleanField(default=False)
-    marks_tattoos_scars = models.CharField(blank=True, max_length=255) # Consider TextField, increased max_length
+    marks_tattoos_scars = models.CharField(blank=True, max_length=255)
     has_child = models.BooleanField(default=False)
     children_count = models.PositiveIntegerField(default=0)
 
@@ -468,7 +567,7 @@ class RehabilitationProgram(models.Model):
         ('beginner', 'Beginner'),
         ('intermediate', 'Intermediate'),
         ('expert', 'Expert'),
-        ('not_applicable', 'Not Applicable'), # Added
+        ('not_applicable', 'Not Applicable'),
     ]
 
     prisoner = models.OneToOneField(Prisoner, on_delete=models.CASCADE, primary_key=True, related_name='rehabilitation')
@@ -496,15 +595,22 @@ class ActivityLog(models.Model):
         ('update', 'Update'),
         ('delete', 'Delete'),
         ('transfer', 'Transfer'),
-        ('approve', 'Approve'), # Added for visitor approval etc.
-        ('login', 'Login'),   # Example, if you log logins
-        ('logout', 'Logout'), # Example
+        ('approve', 'Approve'),
+        ('login', 'Login'),
+        ('logout', 'Logout'),
+        ('add_item', 'Add Item'),
+        ('withdraw_money', 'Withdraw Money'),
+        ('collect_item', 'Collect Item'),
+        ('capture_fingerprint', 'Capture Fingerprint'),
+        ('verify_identity', 'Verify Identity'),
+        ('fingerprint_match', 'Fingerprint Match'),
+        ('link_identity', 'Link Identity'),
     ]
 
     user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
-    action = models.CharField(max_length=20, choices=ACTION_CHOICES)
-    model = models.CharField(max_length=50) # e.g., 'Prisoner', 'Visitor'
-    object_id = models.PositiveIntegerField(null=True, blank=True) # Can be null if action is general
+    action = models.CharField(max_length=30, choices=ACTION_CHOICES)
+    model = models.CharField(max_length=50)
+    object_id = models.PositiveIntegerField(null=True, blank=True)
     details = models.TextField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
@@ -515,11 +621,11 @@ class ActivityLog(models.Model):
         return f"{self.user} {self.action}d {self.model} {self.object_id or ''} at {self.timestamp.strftime('%Y-%m-%d %H:%M')}"
 
 class ReleaseOnRemission(models.Model):
-    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE) # Should this be OneToOne if only one such record per prisoner?
+    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE)
     release_date = models.DateField()
-    original_sentence = models.FloatField() # Changed from PositiveIntegerField to match ConvictedPrisoner.sentence
+    original_sentence = models.FloatField()
     remission_months = models.DecimalField(max_digits=5, decimal_places=2)
-    reduction_months = models.FloatField(default=0) # Changed from PositiveIntegerField
+    reduction_months = models.FloatField(default=0)
     reduction_reason = models.TextField(blank=True)
     processed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
     processed_date = models.DateTimeField(auto_now_add=True)
@@ -536,7 +642,7 @@ class Visitor(models.Model):
         ('other', 'Other'),
     ]
 
-    ID_TYPE_CHOICES = [ # You might still want to add this if you record ID type
+    ID_TYPE_CHOICES = [
         ('national_id', 'National ID'),
         ('passport', 'Passport'),
         ('drivers_license', 'Driver\'s License'),
@@ -546,18 +652,10 @@ class Visitor(models.Model):
     prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE)
     first_name = models.CharField(max_length=50)
     surname = models.CharField(max_length=50)
-    
-    # Fields from previous suggestions (now confirmed by screenshot where applicable)
-    contact_number = models.CharField(max_length=20, blank=True, null=True) # Matches "Contact Number"
-    
-    # New fields identified from the screenshot:
-    id_number = models.CharField(max_length=50, blank=True, null=True) # Corresponds to "ID Number"
-    address = models.TextField(blank=True, null=True) # Corresponds to "Address"
-    purpose_of_visit = models.TextField(blank=True, null=True) # Corresponds to "Purpose of Visit"
-
-    # You might consider adding identification_type as well, for context to id_number
-    # identification_type = models.CharField(max_length=20, choices=ID_TYPE_CHOICES, blank=True, null=True) 
-
+    contact_number = models.CharField(max_length=20, blank=True, null=True)
+    id_number = models.CharField(max_length=50, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    purpose_of_visit = models.TextField(blank=True, null=True)
     relationship = models.CharField(max_length=20, choices=RELATIONSHIP_CHOICES)
     visit_date = models.DateField()
     visit_time = models.TimeField()
@@ -568,7 +666,7 @@ class Visitor(models.Model):
     approved_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name="approved_visitors")
     created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name="created_visitors")
     created_at = models.DateTimeField(auto_now_add=True)
-    last_updated = models.DateTimeField(auto_now=True) # Corresponds to "Last Updated"
+    last_updated = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.first_name} {self.surname} (Visitor for {self.prisoner.full_name})"
@@ -597,16 +695,13 @@ class MedicalRecord(models.Model):
     treatment = models.TextField()
     prescribed_medication = models.TextField(blank=True)
     next_checkup = models.DateField(blank=True, null=True)
-    attending_staff = models.CharField(max_length=100) # Could be FK to User if staff are users
+    recorded_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='medical_records_recorded')
     notes = models.TextField(blank=True)
-    created_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='created_medical_records') # Changed from CustomUser to User
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.get_category_display()} for {self.prisoner} on {self.record_date}"
-
-
 
 class IncidentReport(models.Model):
     SEVERITY_CHOICES = [
@@ -619,16 +714,434 @@ class IncidentReport(models.Model):
     title = models.CharField(max_length=200)
     description = models.TextField()
     severity = models.CharField(max_length=20, choices=SEVERITY_CHOICES)
-    date_occurred = models.DateTimeField() # Includes time
-    location = models.CharField(max_length=100) # Specific location within the prison
-    involved_prisoners = models.ManyToManyField(Prisoner, related_name='incidents', blank=True) # Can be blank if no prisoners involved
-    involved_staff = models.TextField(blank=True) # Names or IDs of staff, consider M2M to User if staff are users
+    date_occurred = models.DateTimeField()
+    location = models.CharField(max_length=100)
+    involved_prisoners = models.ManyToManyField(Prisoner, related_name='incidents', blank=True)
+    involved_staff = models.TextField(blank=True)
     actions_taken = models.TextField()
     follow_up_required = models.BooleanField(default=False)
     follow_up_notes = models.TextField(blank=True)
-    reported_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='reported_incidents') # Changed from CustomUser to User
+    reported_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='reported_incidents')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
     def __str__(self):
         return f"{self.title} - {self.get_severity_display()} ({self.date_occurred.strftime('%Y-%m-%d %H:%M')})"
+
+class PrisonerItem(models.Model):
+    ITEM_TYPE_CHOICES = [
+        ('money', 'Money'),
+        ('clothing', 'Clothing'),
+        ('personal_belonging', 'Personal Belonging'),
+        ('other', 'Other'),
+    ]
+    CURRENCY_CHOICES = [
+        ('MWK', 'Malawi Kwacha (MWK)'),
+    ]
+
+    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, related_name='items')
+    item_type = models.CharField(max_length=50, choices=ITEM_TYPE_CHOICES)
+    description = models.CharField(max_length=255)
+    quantity = models.PositiveIntegerField(default=1, blank=True, null=True,
+                                           help_text="Quantity for non-monetary items. Leave blank for money.")
+    initial_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, blank=True, null=True,
+                                         help_text="Initial amount for money. Leave blank for other items.")
+    current_amount = models.DecimalField(max_digits=10, decimal_places=2, default=0.00, blank=True, null=True,
+                                         help_text="Current amount for money. Leave blank for other items.")
+    currency = models.CharField(max_length=5, choices=CURRENCY_CHOICES, default='MWK')
+    date_received = models.DateField(default=timezone.now)
+    received_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='received_prisoner_items')
+    notes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_collected = models.BooleanField(default=False, help_text="Indicates if the item has been collected/reclaimed by the prisoner or their representative.")
+
+    class Meta:
+        verbose_name = "Prisoner Item"
+        verbose_name_plural = "Prisoner Items"
+        ordering = ['-date_received', 'item_type']
+
+    def __str__(self):
+        status = " (Collected)" if self.is_collected else ""
+        if self.item_type == 'money':
+            return f"{self.prisoner.full_name} - Money ({self.currency} {self.current_amount}){status}"
+        return f"{self.prisoner.full_name} - {self.get_item_type_display()}: {self.description} (x{self.quantity}){status}"
+
+    def clean(self):
+        if self.item_type == 'money':
+            if self.quantity is not None and self.quantity != 1:
+                raise ValidationError({'quantity': 'Quantity must be 1 or blank for money items.'})
+            if self.initial_amount is None or self.initial_amount < 0:
+                raise ValidationError({'initial_amount': 'Initial amount is required and must be non-negative for money items.'})
+        else:
+            if self.initial_amount is not None and self.initial_amount != 0:
+                raise ValidationError({'initial_amount': 'Initial amount must be 0 or blank for non-money items.'})
+            if self.current_amount is not None and self.current_amount != 0:
+                raise ValidationError({'current_amount': 'Current amount must be 0 or blank for non-money items.'})
+            if self.quantity is None or self.quantity < 1:
+                raise ValidationError({'quantity': 'Quantity is required and must be at least 1 for non-money items.'})
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        self.full_clean()
+        if is_new and self.item_type == 'money':
+            self.current_amount = self.initial_amount
+        super().save(*args, **kwargs)
+
+class PrisonerItemTransaction(models.Model):
+    TRANSACTION_TYPE_CHOICES = [
+        ('deposit', 'Deposit'),
+        ('withdrawal', 'Withdrawal'),
+    ]
+
+    item = models.ForeignKey(PrisonerItem, on_delete=models.CASCADE, related_name='transactions',
+                             limit_choices_to={'item_type': 'money'})
+    transaction_type = models.CharField(max_length=20, choices=TRANSACTION_TYPE_CHOICES)
+    amount = models.DecimalField(max_digits=10, decimal_places=2, validators=[MinValueValidator(0.01)])
+    transaction_date = models.DateTimeField(default=timezone.now)
+    transacted_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='item_transactions')
+    reason = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Prisoner Item Transaction"
+        verbose_name_plural = "Prisoner Item Transactions"
+        ordering = ['-transaction_date']
+
+    def clean(self):
+        if self.transaction_type == 'withdrawal':
+            if self.amount > self.item.current_amount:
+                raise ValidationError({'amount': f'Withdrawal amount ({self.amount} {self.item.currency}) exceeds current balance ({self.item.current_amount} {self.item.currency}).'})
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        if self.pk is None:
+            if self.transaction_type == 'deposit':
+                self.item.current_amount += self.amount
+            elif self.transaction_type == 'withdrawal':
+                self.item.current_amount -= self.amount
+            self.item.save()
+        super().save(*args, **kwargs)
+
+# ============ BIOMETRIC / FINGERPRINT MODELS ============
+
+class FingerprintDevice(models.Model):
+    """Manage fingerprint scanner devices"""
+    DEVICE_STATUS_CHOICES = [
+        ('active', 'Active'),
+        ('inactive', 'Inactive'),
+        ('maintenance', 'Maintenance'),
+        ('offline', 'Offline'),
+    ]
+    
+    DEVICE_TYPE_CHOICES = [
+        ('integrated', 'Integrated (Laptop)'),
+        ('usb', 'USB Scanner'),
+        ('mobile', 'Mobile Scanner'),
+        ('other', 'Other'),
+    ]
+    
+    name = models.CharField(max_length=100)
+    device_type = models.CharField(max_length=20, choices=DEVICE_TYPE_CHOICES, default='integrated')
+    serial_number = models.CharField(max_length=100, unique=True)
+    status = models.CharField(max_length=20, choices=DEVICE_STATUS_CHOICES, default='active')
+    prison_station = models.ForeignKey(
+        PrisonStation, 
+        on_delete=models.CASCADE, 
+        related_name='fingerprint_devices'
+    )
+    last_used_at = models.DateTimeField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    notes = models.TextField(blank=True)
+    
+    class Meta:
+        verbose_name = "Fingerprint Device"
+        verbose_name_plural = "Fingerprint Devices"
+        ordering = ['prison_station', 'name']
+        
+    def __str__(self):
+        return f"{self.name} ({self.get_device_type_display()}) - {self.status}"
+
+
+class FingerprintMatch(models.Model):
+    """Track fingerprint matching history for auditing"""
+    MATCH_STATUS_CHOICES = [
+        ('exact', 'Exact Match'),
+        ('probable', 'Probable Match'),
+        ('potential', 'Potential Match'),
+        ('no_match', 'No Match'),
+        ('error', 'Match Error'),
+    ]
+    
+    searched_prisoner = models.ForeignKey(
+        Prisoner, 
+        on_delete=models.CASCADE, 
+        related_name='searched_fingerprints',
+        null=True,
+        blank=True,
+        help_text="The prisoner whose fingerprint was used for search (null for unknown)"
+    )
+    matched_prisoner = models.ForeignKey(
+        Prisoner, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True, 
+        related_name='matched_fingerprints'
+    )
+    match_score = models.FloatField(help_text="Match confidence score 0-100")
+    match_status = models.CharField(max_length=20, choices=MATCH_STATUS_CHOICES)
+    search_timestamp = models.DateTimeField(auto_now_add=True)
+    searched_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    search_ip = models.GenericIPAddressField(blank=True, null=True)
+    match_details = models.TextField(blank=True)
+    
+    class Meta:
+        verbose_name = "Fingerprint Match"
+        verbose_name_plural = "Fingerprint Matches"
+        ordering = ['-search_timestamp']
+        indexes = [
+            models.Index(fields=['searched_prisoner', '-search_timestamp']),
+            models.Index(fields=['matched_prisoner', '-search_timestamp']),
+            models.Index(fields=['match_status']),
+        ]
+
+    def __str__(self):
+        status = "Matched" if self.matched_prisoner else "No Match"
+        return f"{self.searched_prisoner or 'Unknown'} - {status} ({self.match_score:.1f}%)"
+
+
+class FingerprintAuditLog(models.Model):
+    """Detailed audit log for fingerprint operations"""
+    OPERATION_CHOICES = [
+        ('capture', 'Fingerprint Capture'),
+        ('verify', 'Identity Verification'),
+        ('search', 'Fingerprint Search'),
+        ('match', 'Fingerprint Match'),
+        ('link', 'Identity Link'),
+        ('unlink', 'Identity Unlink'),
+        ('delete', 'Fingerprint Delete'),
+        ('update', 'Fingerprint Update'),
+    ]
+    
+    prisoner = models.ForeignKey(
+        Prisoner, 
+        on_delete=models.CASCADE, 
+        related_name='fingerprint_audits'
+    )
+    operation = models.CharField(max_length=20, choices=OPERATION_CHOICES)
+    performed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True)
+    performed_at = models.DateTimeField(auto_now_add=True)
+    ip_address = models.GenericIPAddressField(blank=True, null=True)
+    user_agent = models.TextField(blank=True, null=True)  # Make this nullable
+    details = models.JSONField(default=dict, blank=True)
+    success = models.BooleanField(default=True)
+    error_message = models.TextField(blank=True)
+    
+    class Meta:
+        verbose_name = "Fingerprint Audit Log"
+        verbose_name_plural = "Fingerprint Audit Logs"
+        ordering = ['-performed_at']
+        indexes = [
+            models.Index(fields=['prisoner', '-performed_at']),
+            models.Index(fields=['operation', '-performed_at']),
+        ]
+
+    def __str__(self):
+        return f"{self.prisoner} - {self.get_operation_display()} at {self.performed_at}"
+
+# ============ RATION MANAGEMENT MODELS ============
+
+class RationItem(models.Model):
+    UNIT_CHOICES = [
+        ('kg', 'Kilograms (kg)'),
+        ('bags', 'Bags'),
+        ('pieces', 'Pieces'),
+        ('liters', 'Liters (L)'),
+        ('other', 'Other'),
+    ]
+
+    name = models.CharField(max_length=100, unique=True, help_text="e.g., Peas, Cabbages, Beef, Flour")
+    unit = models.CharField(max_length=10, choices=UNIT_CHOICES, default='kg')
+    current_stock_kg = models.DecimalField(
+        max_digits=10, decimal_places=3, default=0.000,
+        help_text="Current stock in Kilograms (kg)"
+    )
+    low_stock_threshold_kg = models.DecimalField(
+        max_digits=10, decimal_places=3, default=50.000,
+        help_text="Threshold in kg to trigger a low stock alert"
+    )
+    daily_consumption_per_prisoner_kg = models.DecimalField(
+        max_digits=10, decimal_places=4, default=0.500,
+        help_text="Daily consumption per prisoner in kg (used for automatic calculations)"
+    )
+    estimated_days_remaining = models.PositiveIntegerField(
+        default=0,
+        help_text="Estimated days ration will last based on current stock and prisoner count"
+    )
+    last_stock_update = models.DateTimeField(auto_now=True)
+    last_consumption_date = models.DateField(blank=True, null=True)
+    prison_station = models.ForeignKey(
+        PrisonStation,
+        on_delete=models.CASCADE,
+        related_name='ration_items'
+    )
+    is_active = models.BooleanField(default=True, help_text="Whether this ration item is currently in use")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Ration Item"
+        verbose_name_plural = "Ration Items"
+        unique_together = ('name', 'prison_station')
+        ordering = ['name']
+
+    def __str__(self):
+        return f"{self.name} ({self.prison_station.name})"
+
+    @property
+    def is_low_stock(self):
+        return self.current_stock_kg < self.low_stock_threshold_kg
+
+    def get_current_prisoner_count(self):
+        """Get current number of prisoners for this station"""
+        from .models import Prisoner
+        return Prisoner.objects.filter(
+            prison_station=self.prison_station,
+            is_active=True
+        ).count()
+
+    def calculate_estimated_days(self):
+        """Calculate estimated days remaining based on current stock and prisoner count"""
+        if self.current_stock_kg <= 0 or self.daily_consumption_per_prisoner_kg <= 0:
+            return 0
+        
+        prisoner_count = self.get_current_prisoner_count()
+        if prisoner_count == 0:
+            return 0
+        
+        daily_total_consumption = self.daily_consumption_per_prisoner_kg * prisoner_count
+        if daily_total_consumption <= 0:
+            return 0
+        
+        days_remaining = self.current_stock_kg / daily_total_consumption
+        return int(days_remaining)
+
+    def update_estimated_days(self):
+        """Update the estimated days remaining field"""
+        self.estimated_days_remaining = self.calculate_estimated_days()
+        self.save(update_fields=['estimated_days_remaining', 'last_stock_update'])
+
+    def record_daily_consumption(self, auto=True):
+        """
+        Record daily consumption based on current prisoner count.
+        If auto=True, uses daily_consumption_per_prisoner_kg * prisoner_count
+        If auto=False, requires manual quantity entry
+        """
+        prisoner_count = self.get_current_prisoner_count()
+        if prisoner_count == 0:
+            return None
+        
+        if auto:
+            quantity_used = self.daily_consumption_per_prisoner_kg * prisoner_count
+        else:
+            quantity_used = 0  # Would need manual input
+        
+        # Create consumption record
+        consumption = RationConsumption.objects.create(
+            item=self,
+            consumption_date=timezone.now().date(),
+            quantity_used_kg=quantity_used,
+            num_prisoners_fed=prisoner_count,
+            is_auto_calculated=auto
+        )
+        
+        # Update stock
+        self.current_stock_kg -= quantity_used
+        self.last_consumption_date = timezone.now().date()
+        self.save(update_fields=['current_stock_kg', 'last_consumption_date', 'last_stock_update'])
+        
+        # Update estimated days
+        self.update_estimated_days()
+        
+        return consumption
+
+class RationConsumption(models.Model):
+    item = models.ForeignKey(RationItem, on_delete=models.CASCADE, related_name='consumptions')
+    consumption_date = models.DateField(default=timezone.now)
+    quantity_used_kg = models.DecimalField(
+        max_digits=10, decimal_places=3,
+        help_text="Quantity consumed in Kilograms (kg)",
+        validators=[MinValueValidator(0.001)]
+    )
+    num_prisoners_fed = models.PositiveIntegerField(
+        help_text="Number of prisoners (including children) fed with this ration on this day"
+    )
+    is_auto_calculated = models.BooleanField(
+        default=False,
+        help_text="Whether this consumption was automatically calculated based on prisoner count"
+    )
+    consumed_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='rations_consumed')
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Ration Consumption"
+        verbose_name_plural = "Ration Consumptions"
+        ordering = ['-consumption_date', 'item__name']
+
+    def clean(self):
+        if self.item and self.quantity_used_kg is not None:
+            if self.item.current_stock_kg is None:
+                raise ValidationError(
+                    {'quantity_used_kg': f"Current stock for {self.item.name} is not set (None). Cannot record consumption."}
+                )
+            if self.quantity_used_kg > self.item.current_stock_kg:
+                raise ValidationError(
+                    {'quantity_used_kg': f"Consumption amount ({self.quantity_used_kg} kg) exceeds current stock ({self.item.current_stock_kg} kg) for {self.item.name}."}
+                )
+        super().clean()
+
+    def save(self, *args, **kwargs):
+        # Deduct from stock when consumption is recorded
+        if not self.pk:  # Only on creation
+            if self.item and self.quantity_used_kg:
+                self.item.current_stock_kg -= self.quantity_used_kg
+                self.item.last_consumption_date = self.consumption_date
+                self.item.save(update_fields=['current_stock_kg', 'last_consumption_date', 'last_stock_update'])
+                # Update estimated days
+                self.item.update_estimated_days()
+        super().save(*args, **kwargs)
+
+class RationProcurement(models.Model):
+    item = models.ForeignKey(RationItem, on_delete=models.CASCADE, related_name='procurements')
+    procurement_date = models.DateField(default=timezone.now)
+    quantity_procured_kg = models.DecimalField(
+        max_digits=10, decimal_places=3,
+        help_text="Quantity procured in Kilograms (kg)",
+        validators=[MinValueValidator(0.001)]
+    )
+    procured_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='rations_procured')
+    supplier = models.CharField(max_length=200, blank=True, null=True)
+    invoice_number = models.CharField(max_length=100, blank=True, null=True)
+    notes = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Ration Procurement"
+        verbose_name_plural = "Ration Procurements"
+        ordering = ['-procurement_date', 'item__name']
+
+    def save(self, *args, **kwargs):
+        # Add to stock when procurement is recorded
+        if not self.pk:  # Only on creation
+            if self.item and self.quantity_procured_kg:
+                self.item.current_stock_kg += self.quantity_procured_kg
+                self.item.save(update_fields=['current_stock_kg', 'last_stock_update'])
+                # Update estimated days
+                self.item.update_estimated_days()
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Procured {self.quantity_procured_kg}kg of {self.item.name} on {self.procurement_date}"

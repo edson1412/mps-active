@@ -7,6 +7,10 @@
     body {
         background-color: rgba(173, 216, 230, 0.6); /* Light blue with 60% opacity */
     }
+    .detail-label {
+        width: 200px;
+        font-weight: 600;
+    }
 </style>
 {% endblock %}
 
@@ -23,7 +27,7 @@
             </a>
         </div>
     </div>
-    
+
     <div class="card mb-4">
         <div class="card-header">
             <h5 class="mb-0">Record Details</h5>
@@ -31,43 +35,51 @@
         <div class="card-body">
             <table class="table table-sm table-borderless">
                 <tr>
-                    <th>Prisoner:</th>
+                    <th class="detail-label">Prisoner:</th>
                     <td><a href="{% url 'prisoner_detail' medical_record.prisoner.id %}">{{ medical_record.prisoner.full_name }} ({{ medical_record.prisoner.prisoner_number }})</a></td>
                 </tr>
                 <tr>
-                    <th>Record Date:</th>
+                    <th class="detail-label">Record Date:</th>
                     <td>{{ medical_record.record_date|date:"Y-m-d" }}</td>
                 </tr>
                 <tr>
-                    <th>Category:</th>
+                    <th class="detail-label">Next Checkup:</th>
+                    <td>{{ medical_record.next_checkup|date:"Y-m-d"|default:"Not scheduled" }}</td>
+                </tr>
+                <tr>
+                    <th class="detail-label">Category:</th>
                     <td>{{ medical_record.get_category_display }}</td>
                 </tr>
                 <tr>
-                    <th>Diagnosis:</th>
+                    <th class="detail-label">Diagnosis:</th>
                     <td>{{ medical_record.diagnosis|default:"N/A" }}</td>
                 </tr>
                 <tr>
-                    <th>Treatment:</th>
-                    <td>{{ medical_record.treatment|default:"N/A" }}</td>
+                    <th class="detail-label">Treatment:</th>
+                    <td>{{ medical_record.treatment|default:"N/A"|linebreaks }}</td>
                 </tr>
                 <tr>
-                    <th>Medication:</th>
-                    <td>{{ medical_record.medication|default:"N/A" }}</td>
+                    <th class="detail-label">Prescribed Medication:</th>
+                    <td>{{ medical_record.prescribed_medication|default:"N/A"|linebreaks }}</td>
                 </tr>
                 <tr>
-                    <th>Notes:</th>
-                    <td>{{ medical_record.notes|default:"N/A" }}</td>
+                    <th class="detail-label">Attending Staff:</th>
+                    <td>{{ medical_record.attending_staff|default:"N/A" }}</td>
                 </tr>
                 <tr>
-                    <th>Recorded By:</th>
-                    <td>{{ medical_record.recorded_by.get_full_name|default:medical_record.recorded_by.username }}</td>
+                    <th class="detail-label">Notes:</th>
+                    <td>{{ medical_record.notes|default:"N/A"|linebreaks }}</td>
                 </tr>
                 <tr>
-                    <th>Created At:</th>
+                    <th class="detail-label">Created By:</th>
+                    <td>{{ medical_record.created_by.get_full_name|default:"System" }}</td>
+                </tr>
+                <tr>
+                    <th class="detail-label">Created At:</th>
                     <td>{{ medical_record.created_at|date:"Y-m-d H:i" }}</td>
                 </tr>
                 <tr>
-                    <th>Last Updated:</th>
+                    <th class="detail-label">Last Updated:</th>
                     <td>{{ medical_record.updated_at|date:"Y-m-d H:i" }}</td>
                 </tr>
             </table>
