@@ -15,9 +15,17 @@ import json
 User = get_user_model()
 
 class PrisonStation(models.Model):
+    REGION_CHOICES = [
+        ('southern', 'Southern Region'),
+        ('northern', 'Northern Region'),
+        ('eastern', 'Eastern Region'),
+        ('central', 'Central Region'),
+    ]
+
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=10, unique=True)
     location = models.CharField(max_length=100)
+    region = models.CharField(max_length=10, choices=REGION_CHOICES, default='southern')
     capacity = models.PositiveIntegerField()
     date_established = models.DateField()
     created_by = models.ForeignKey(
@@ -29,7 +37,7 @@ class PrisonStation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return self.name
+        return f"{self.name} ({self.get_region_display()})"
 
     class Meta:
         verbose_name = "Prison Station"
@@ -163,6 +171,44 @@ class Prisoner(models.Model):
                 self.fingerprint_template.encode()
             ).hexdigest()
         super().save(*args, **kwargs)
+
+
+class PrisonerReleaseReview(models.Model):
+    REVIEW_ROLE_CHOICES = [
+        ('officer_in_charge', 'Officer in Charge'),
+        ('station_officer', 'Station Officer'),
+    ]
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('approved', 'Approved'),
+        ('rejected', 'Rejected'),
+    ]
+
+    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, related_name='release_reviews')
+    requested_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='requested_release_reviews'
+    )
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='reviewed_release_reviews'
+    )
+    review_role = models.CharField(max_length=25, choices=REVIEW_ROLE_CHOICES)
+    station = models.ForeignKey(PrisonStation, on_delete=models.CASCADE, related_name='release_reviews')
+    release_date = models.DateField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    notes = models.TextField(blank=True)
+    requested_at = models.DateTimeField(auto_now_add=True)
+    reviewed_at = models.DateTimeField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.prisoner.prisoner_number} - {self.get_review_role_display()}"
 
 
 class ConvictedPrisoner(models.Model):
@@ -1145,3 +1191,68 @@ class RationProcurement(models.Model):
 
     def __str__(self):
         return f"Procured {self.quantity_procured_kg}kg of {self.item.name} on {self.procurement_date}"
+
+
+class Notification(models.Model):
+    NOTIFICATION_TYPES = [
+        ('medical_checkup', 'Medical Checkup Reminder'),
+        ('near_release', 'Prisoner Near Release'),
+        ('new_admission', 'New Prisoner Admission'),
+        ('general', 'General Notification'),
+    ]
+
+    PRIORITY_LEVELS = [
+        ('low', 'Low'),
+        ('medium', 'Medium'),
+        ('high', 'High'),
+        ('urgent', 'Urgent'),
+    ]
+
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    notification_type = models.CharField(max_length=20, choices=NOTIFICATION_TYPES, default='general')
+    priority = models.CharField(max_length=10, choices=PRIORITY_LEVELS, default='medium')
+    
+    # Related objects (optional)
+    prisoner = models.ForeignKey(Prisoner, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+    medical_record = models.ForeignKey(MedicalRecord, on_delete=models.CASCADE, null=True, blank=True, related_name='notifications')
+    
+    # Target users
+    target_users = models.ManyToManyField(User, related_name='notifications', blank=True)
+    
+    # Status tracking
+    is_read = models.BooleanField(default=False)
+    read_at = models.DateTimeField(null=True, blank=True)
+    read_by = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='read_notifications')
+    
+    # Metadata
+    action_required = models.BooleanField(default=False)
+    action_url = models.CharField(max_length=255, blank=True, null=True)
+    due_date = models.DateField(null=True, blank=True)
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        verbose_name = "Notification"
+        verbose_name_plural = "Notifications"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.title} - {self.get_notification_type_display()}"
+
+    def mark_as_read(self, user):
+        """Mark notification as read by a specific user"""
+        if not self.is_read:
+            self.is_read = True
+            self.read_at = timezone.now()
+            self.read_by = user
+            self.save(update_fields=['is_read', 'read_at', 'read_by'])
+
+    def is_expired(self):
+        """Check if notification has expired"""
+        if self.expires_at:
+            return timezone.now() > self.expires_at
+        return False

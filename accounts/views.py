@@ -30,7 +30,11 @@ def login_view(request):
                 elif user.is_prison_admin():
                     return redirect(reverse_lazy('dashboard'))
                 elif user.is_reception():
-                    return redirect(reverse_lazy('prisoner_list'))
+                    return redirect(reverse_lazy('release_hub'))
+                elif user.is_officer_in_charge():
+                    return redirect(reverse_lazy('release_hub'))
+                elif user.is_station_officer():
+                    return redirect(reverse_lazy('release_hub'))
                 elif user.is_visitor_attendant():
                     return redirect(reverse_lazy('visitor_list'))
                 elif user.is_medical_officer():

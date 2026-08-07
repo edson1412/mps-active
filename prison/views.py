@@ -13,6 +13,8 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.views.generic import ListView, CreateView, UpdateView, DetailView, DeleteView, View
+from django.core.exceptions import PermissionDenied
+from collections import defaultdict
 from django.core.exceptions import PermissionDenied, ValidationError
 import json
 import logging
@@ -58,6 +60,7 @@ from .models import (
     RationItem,
     RationConsumption,
     RationProcurement,
+    Notification,
 )
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect
@@ -99,9 +102,33 @@ import logging
 from django.core.exceptions import ObjectDoesNotExist
 from django.core.exceptions import PermissionDenied, ValidationError # Import ValidationError here
 from django.db.models import Prefetch # Added for prefetching related data
-from collections import defaultdict # Import defaultdict for nationality mapping
 
 logger = logging.getLogger(__name__)
+
+
+def _get_prisoner_release_date(prisoner):
+    try:
+        convicted_details = prisoner.convicted_details
+    except ObjectDoesNotExist:
+        return None
+
+    return convicted_details.date_of_release_on_remission or convicted_details.date_of_release
+
+
+def _get_release_candidates(today):
+    release_window_end = today + timedelta(days=5)
+    return (
+        Prisoner.objects.filter(is_active=True)
+        .filter(
+            Q(convicted_details__date_of_release_on_remission__gte=today)
+            & Q(convicted_details__date_of_release_on_remission__lte=release_window_end)
+            | Q(convicted_details__date_of_release__gte=today)
+            & Q(convicted_details__date_of_release__lte=release_window_end)
+        )
+        .select_related('prison_station', 'convicted_details')
+        .order_by('convicted_details__date_of_release_on_remission', 'convicted_details__date_of_release')
+    )
+
 
 # Add this at the top of your views.py with other constants
 NATIONALITY_TO_COUNTRY = {
@@ -127,52 +154,183 @@ NATIONALITY_TO_COUNTRY = {
 def _get_lockup_summary_data(request_user):
     """
     Calculates and returns prisoner summary data, including breakdowns by station,
-    prisoner class, and nationality.
+    prisoner class, and nationality, organized by user permission level.
     This function is reusable for the dashboard and a dedicated summary page.
     """
-    # Define a safe way to check if the user is a super admin, assuming the method might be missing
+    # Define a safe way to check if the user is a super admin
     is_super_admin_user = hasattr(request_user, 'is_super_admin') and request_user.is_super_admin()
+    has_region_permission = hasattr(request_user, 'has_region_permission') and request_user.has_region_permission()
+    has_station_permission = hasattr(request_user, 'has_station_permission') and request_user.has_station_permission()
 
     # Base queryset for active prisoners, prefetched for related data efficiency
     prisoners_base_qs = Prisoner.objects.filter(is_active=True).select_related('prison_station').prefetch_related('physical', 'particulars', 'convicted_details')
 
-    # Apply station filtering if the user is not a super admin
-    if not is_super_admin_user and hasattr(request_user, 'prison_station') and request_user.prison_station:
-        prisoners_base_qs = prisoners_base_qs.filter(prison_station=request_user.prison_station)
-    elif not is_super_admin_user and (not hasattr(request_user, 'prison_station') or not request_user.prison_station):
-        # If not super admin and no station assigned, return empty data
+    # SUPER ADMIN: Show all regions
+    if is_super_admin_user:
+        return _get_regional_summary_data(prisoners_base_qs)
+    
+    # REGIONAL ADMIN: Show only their region
+    elif has_region_permission and request_user.region:
+        region_prisoners = prisoners_base_qs.filter(prison_station__region=request_user.region)
+        regional_data = _get_regional_summary_data(region_prisoners, single_region=True)
+        
+        # Extract the single region data
+        if regional_data:
+            region_key = list(regional_data.keys())[0]
+            regional_summary = regional_data[region_key]
+            regional_summary['total_stations'] = len(regional_summary['stations'])
+            
+            return {
+                'regional_summary': regional_summary,
+                'overall_summary': _calculate_overall_summary(region_prisoners),
+            }
+        else:
+            return _get_empty_summary()
+    
+    # STATION ADMIN: Show only their station
+    elif has_station_permission and request_user.prison_station:
+        station_prisoners = prisoners_base_qs.filter(prison_station=request_user.prison_station)
+        station_summary = _calculate_station_summary(request_user.prison_station, station_prisoners)
+        
         return {
-            'lockup_summary': {},
-            'station_summary_data': [],
-            'total_prisoners': 0,
-            'convicted_count': 0,
-            'remand_count': 0,
-            'children_count': 0,
-            'foreigners_by_country': [],
-            'total_foreigners': 0,
-            'foreigner_convicted': 0,
-            'foreigner_remand': 0,
+            'station_summary': station_summary,
         }
+    
+    # No permission
+    else:
+        return _get_empty_summary()
 
-    # Overall totals for the filtered set of prisoners
-    total_prisoners = prisoners_base_qs.count()
-    male_convicted_total = prisoners_base_qs.filter(sex='male', prisoner_class='convicted').count()
-    female_convicted_total = prisoners_base_qs.filter(sex='female', prisoner_class='convicted').count()
-    male_remand_total = prisoners_base_qs.filter(sex='male', prisoner_class='remand').count()
-    female_remand_total = prisoners_base_qs.filter(sex='female', prisoner_class='remand').count()
 
-    # Calculate overall children count
-    female_prisoners_with_physical = prisoners_base_qs.filter(sex='female', physical__isnull=False)
+def _get_regional_summary_data(prisoners_qs, single_region=False):
+    """
+    Calculate regional summary data for super admin or regional admin.
+    Returns a dictionary with region names as keys.
+    """
+    # Get all regions from prison stations
+    if single_region:
+        # For single region, just return the region data directly
+        stations = PrisonStation.objects.filter(
+            id__in=prisoners_qs.values_list('prison_station_id', flat=True)
+        ).distinct()
+        
+        if not stations.exists():
+            return None
+            
+        region_name = stations.first().get_region_display()
+        region_data = _calculate_region_data(stations, prisoners_qs)
+        return {region_name: region_data}
+    else:
+        # For super admin, group by all regions
+        regions = PrisonStation.REGION_CHOICES
+        regional_summary = {}
+        
+        for region_code, region_display in regions:
+            region_stations = PrisonStation.objects.filter(region=region_code)
+            if not region_stations.exists():
+                continue
+                
+            region_prisoners = prisoners_qs.filter(prison_station__region=region_code)
+            if not region_prisoners.exists():
+                continue
+                
+            region_data = _calculate_region_data(region_stations, region_prisoners)
+            regional_summary[region_display] = region_data
+        
+        return regional_summary
+
+
+def _calculate_region_data(stations, prisoners_qs):
+    """
+    Calculate summary data for a specific region.
+    """
+    stations_data = []
+    region_totals = {
+        'male_convicted': 0,
+        'female_convicted': 0,
+        'male_remand': 0,
+        'female_remand': 0,
+        'foreigner_convicted': 0,
+        'foreigner_remand': 0,
+        'children': 0,
+        'total': 0,
+    }
+    
+    for station in stations:
+        station_prisoners = prisoners_qs.filter(prison_station=station)
+        station_data = _calculate_station_summary(station, station_prisoners)
+        stations_data.append(station_data)
+        
+        # Add to region totals
+        for key in region_totals:
+            region_totals[key] += station_data.get(key, 0)
+    
+    return {
+        'stations': stations_data,
+        'total_stations': len(stations_data),
+        **region_totals,
+    }
+
+
+def _calculate_station_summary(station, prisoners_qs):
+    """
+    Calculate summary data for a specific station.
+    """
+    m_conv = prisoners_qs.filter(sex='male', prisoner_class='convicted').count()
+    f_conv = prisoners_qs.filter(sex='female', prisoner_class='convicted').count()
+    m_rem = prisoners_qs.filter(sex='male', prisoner_class='remand').count()
+    f_rem = prisoners_qs.filter(sex='female', prisoner_class='remand').count()
+
+    # Calculate foreign convicted and remand
+    s_conv_foreigners = prisoners_qs.filter(
+        prisoner_class='convicted',
+        particulars__nationality__isnull=False
+    ).exclude(particulars__nationality__iexact='malawian').count()
+
+    s_rem_foreigners = prisoners_qs.filter(
+        prisoner_class='remand',
+        particulars__nationality__isnull=False
+    ).exclude(particulars__nationality__iexact='malawian').count()
+
+    # Calculate children count
+    station_children_count = sum(
+        p.physical.children_count for p in prisoners_qs.filter(sex='female')
+        if hasattr(p, 'physical') and p.physical and p.physical.children_count is not None
+    )
+
+    station_total = m_conv + f_conv + m_rem + f_rem + station_children_count + s_conv_foreigners + s_rem_foreigners
+
+    return {
+        'name': station.name,
+        'male_convicted': m_conv,
+        'female_convicted': f_conv,
+        'male_remand': m_rem,
+        'female_remand': f_rem,
+        'foreigner_convicted': s_conv_foreigners,
+        'foreigner_remand': s_rem_foreigners,
+        'children': station_children_count,
+        'total': station_total,
+    }
+
+
+def _calculate_overall_summary(prisoners_qs):
+    """
+    Calculate overall summary data for the given prisoner queryset.
+    """
+    male_convicted_total = prisoners_qs.filter(sex='male', prisoner_class='convicted').count()
+    female_convicted_total = prisoners_qs.filter(sex='female', prisoner_class='convicted').count()
+    male_remand_total = prisoners_qs.filter(sex='male', prisoner_class='remand').count()
+    female_remand_total = prisoners_qs.filter(sex='female', prisoner_class='remand').count()
+
+    # Calculate children count
+    female_prisoners_with_physical = prisoners_qs.filter(sex='female', physical__isnull=False)
     children_count_total = sum([p.physical.children_count for p in female_prisoners_with_physical if p.physical.children_count is not None]) if female_prisoners_with_physical.exists() else 0
 
-    # Calculate overall foreign prisoners count and by country
-    all_foreign_prisoners_qs = prisoners_base_qs.filter(
+    # Calculate foreign prisoners count and by country
+    all_foreign_prisoners_qs = prisoners_qs.filter(
         particulars__nationality__isnull=False
     ).exclude(particulars__nationality__iexact='malawian').select_related('particulars')
 
-    # New approach using the nationality mapping
     country_counts = defaultdict(int)
-
     for prisoner in all_foreign_prisoners_qs:
         if hasattr(prisoner, 'particulars') and prisoner.particulars.nationality:
             nat = prisoner.particulars.nationality.lower()
@@ -183,18 +341,18 @@ def _get_lockup_summary_data(request_user):
                            for country, count in sorted(country_counts.items())]
     total_foreigners = sum(country_counts.values())
 
-    # Calculate overall foreign convicted and remand
-    total_foreigner_convicted = prisoners_base_qs.filter(
+    # Calculate foreign convicted and remand
+    total_foreigner_convicted = prisoners_qs.filter(
         prisoner_class='convicted',
         particulars__nationality__isnull=False
     ).exclude(particulars__nationality__iexact='malawian').count()
 
-    total_foreigner_remand = prisoners_base_qs.filter(
+    total_foreigner_remand = prisoners_qs.filter(
         prisoner_class='remand',
         particulars__nationality__isnull=False
     ).exclude(particulars__nationality__iexact='malawian').count()
 
-    # Calculate grand total (sum of all categories)
+    # Calculate grand total
     grand_total = (
         male_convicted_total + 
         female_convicted_total + 
@@ -205,7 +363,7 @@ def _get_lockup_summary_data(request_user):
         total_foreigner_remand
     )
 
-    lockup_summary = {
+    return {
         'male_convicted': male_convicted_total,
         'female_convicted': female_convicted_total,
         'male_remand': male_remand_total,
@@ -216,69 +374,17 @@ def _get_lockup_summary_data(request_user):
         'foreigners_by_country': foreigners_by_country,
         'foreigner_convicted': total_foreigner_convicted,
         'foreigner_remand': total_foreigner_remand,
-        'total': grand_total,  # Added this to match the template's expectation
     }
 
-    # Station summary data
-    station_summary_data = []
-    stations_to_summarize = PrisonStation.objects.all().order_by('name')
-    if not is_super_admin_user:
-        # If not superuser, only show the user's assigned station
-        if hasattr(request_user, 'prison_station') and request_user.prison_station:
-            stations_to_summarize = [request_user.prison_station]
-        else:
-            stations_to_summarize = [] # No stations to summarize if no station assigned
 
-    for station in stations_to_summarize:
-        station_prisoners_qs = Prisoner.objects.filter(
-            prison_station=station,
-            is_active=True
-        ).select_related('physical', 'particulars')
-
-        m_conv = station_prisoners_qs.filter(sex='male', prisoner_class='convicted').count()
-        f_conv = station_prisoners_qs.filter(sex='female', prisoner_class='convicted').count()
-        m_rem = station_prisoners_qs.filter(sex='male', prisoner_class='remand').count()
-        f_rem = station_prisoners_qs.filter(sex='female', prisoner_class='remand').count()
-
-        # Calculate foreign convicted and remand for each station
-        s_conv_foreigners = station_prisoners_qs.filter(
-            prisoner_class='convicted',
-            particulars__nationality__isnull=False
-        ).exclude(particulars__nationality__iexact='malawian').count()
-
-        s_rem_foreigners = station_prisoners_qs.filter(
-            prisoner_class='remand',
-            particulars__nationality__isnull=False
-        ).exclude(particulars__nationality__iexact='malawian').count()
-
-        station_children_count = sum(
-            p.physical.children_count for p in station_prisoners_qs.filter(sex='female')
-            if hasattr(p, 'physical') and p.physical and p.physical.children_count is not None
-        )
-
-        station_total = m_conv + f_conv + m_rem + f_rem + station_children_count + s_conv_foreigners + s_rem_foreigners
-
-        station_summary_data.append({
-            'name': station.name,
-            'male_convicted': m_conv,
-            'female_convicted': f_conv,
-            'male_remand': m_rem,
-            'female_remand': f_rem,
-            'foreigner_convicted': s_conv_foreigners,
-            'foreigner_remand': s_rem_foreigners,
-            'children': station_children_count,
-            'total': station_total,
-        })
-
+def _get_empty_summary():
+    """
+    Return empty summary data when user has no permissions.
+    """
     return {
-        'lockup_summary': lockup_summary,
-        'station_summary_data': station_summary_data,
-        'total_prisoners': total_prisoners,
-        'convicted_count': male_convicted_total + female_convicted_total,
-        'remand_count': male_remand_total + female_remand_total,
-        'children_count': children_count_total,
-        'foreigners_by_country': foreigners_by_country,
-        'total_foreigners': total_foreigners,
+        'regional_summary': None,
+        'station_summary': None,
+        'overall_summary': None,
     }
 
 # Add the new lockup_summary_view function here
@@ -286,26 +392,178 @@ def _get_lockup_summary_data(request_user):
 def lockup_summary_view(request):
     """
     Displays the lockup summary data on a dedicated page.
+    The view automatically filters data based on user permissions:
+    - Super Admin: Shows all regions
+    - Regional Admin: Shows only their region
+    - Station Admin: Shows only their station
     """
-    # Permissions: You might want to restrict this view based on user roles
+    summary_data = _get_lockup_summary_data(request.user)
+
+    # Determine whether to show prisoner-based stats (same rules as dashboard)
     is_super_admin_user = hasattr(request.user, 'is_super_admin') and request.user.is_super_admin()
     is_prison_admin_user = hasattr(request.user, 'is_prison_admin') and request.user.is_prison_admin()
-    is_warden_user = hasattr(request.user, 'is_warden') and request.user.is_warden()
     is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
+    is_warden_user = hasattr(request.user, 'is_warden') and request.user.is_warden()
+    is_visitor_attendant_user = hasattr(request.user, 'is_visitor_attendant') and request.user.is_visitor_attendant()
 
-    if not (is_super_admin_user or is_prison_admin_user or is_warden_user or is_reception_user):
-        raise PermissionDenied("You do not have permission to view the lockup summary.")
+    show_prisoner_stats = is_super_admin_user or is_prison_admin_user or is_reception_user or is_warden_user or is_visitor_attendant_user
 
-    summary_data = _get_lockup_summary_data(request.user)
+    upcoming_releases = []
+    if show_prisoner_stats:
+        # Build base prisoner queryset filtered by station for non-superusers
+        prisoners = Prisoner.objects.filter(is_active=True)
+        if not is_super_admin_user and hasattr(request.user, 'prison_station') and request.user.prison_station:
+            prisoners = prisoners.filter(prison_station=request.user.prison_station)
+        elif not is_super_admin_user and (not hasattr(request.user, 'prison_station') or not request.user.prison_station):
+            prisoners = Prisoner.objects.none()
+
+        today = timezone.now().date()
+        next_month = today + timedelta(days=30)
+        upcoming_qs = ConvictedPrisoner.objects.filter(
+            prisoner__in=prisoners,
+            date_of_release_on_remission__gte=today,
+            date_of_release_on_remission__lte=next_month
+        ).select_related('prisoner', 'prisoner__prison_station')
+
+        upcoming_releases = upcoming_qs.order_by('date_of_release_on_remission')[:10]
+
     context = {
         'today_date': timezone.localdate(), # Add today_date to context
+        'upcoming_releases': upcoming_releases,
         **summary_data, # Unpack the summary_data dictionary into the context
     }
+
     return render(request, 'prison/lockup_summary.html', context)
 
 
 # --- Dashboard View ---
 @login_required
+@login_required
+def release_hub(request):
+    is_reception_user = hasattr(request.user, 'is_reception') and request.user.is_reception()
+    is_officer_in_charge_user = hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()
+    is_station_officer_user = hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()
+
+    if not (is_reception_user or is_officer_in_charge_user or is_station_officer_user):
+        raise PermissionDenied("You do not have permission to access the release hub.")
+
+    today = timezone.now().date()
+    release_candidates = _get_release_candidates(today)
+
+    pending_reviews = []
+    if is_officer_in_charge_user:
+        pending_reviews = (
+            PrisonerReleaseReview.objects.filter(
+                station=request.user.prison_station,
+                review_role='officer_in_charge',
+                status='pending',
+            )
+            .select_related('prisoner', 'requested_by', 'station')
+            .order_by('release_date', 'requested_at')
+        )
+    elif is_station_officer_user:
+        pending_reviews = (
+            PrisonerReleaseReview.objects.filter(
+                station=request.user.prison_station,
+                review_role='station_officer',
+                status='pending',
+            )
+            .select_related('prisoner', 'requested_by', 'station')
+            .order_by('release_date', 'requested_at')
+        )
+
+    context = {
+        'release_candidates': release_candidates,
+        'pending_reviews': pending_reviews,
+        'today': today,
+    }
+    return render(request, 'prison/release_hub.html', context)
+
+
+@login_required
+@require_POST
+def forward_release_for_review(request, prisoner_id):
+    if not (hasattr(request.user, 'is_reception') and request.user.is_reception()):
+        raise PermissionDenied("Only reception officers can forward prisoners for review.")
+
+    prisoner = get_object_or_404(Prisoner, pk=prisoner_id, is_active=True)
+    review_role = request.POST.get('review_role', 'officer_in_charge')
+    if review_role not in dict(PrisonerReleaseReview.REVIEW_ROLE_CHOICES):
+        review_role = 'officer_in_charge'
+
+    release_date = _get_prisoner_release_date(prisoner) or timezone.now().date()
+    review, created = PrisonerReleaseReview.objects.get_or_create(
+        prisoner=prisoner,
+        review_role=review_role,
+        station=prisoner.prison_station,
+        defaults={
+            'requested_by': request.user,
+            'release_date': release_date,
+            'status': 'pending',
+        },
+    )
+    if not created:
+        review.requested_by = request.user
+        review.release_date = release_date
+        review.status = 'pending'
+        review.notes = ''
+        review.save(update_fields=['requested_by', 'release_date', 'status', 'notes'])
+
+    messages.success(request, f"{prisoner.full_name} was forwarded for {review.get_review_role_display()} review.")
+    return redirect('release_hub')
+
+
+@login_required
+@require_POST
+def approve_release_review(request, review_id):
+    review = get_object_or_404(PrisonerReleaseReview, pk=review_id)
+
+    if review.station != request.user.prison_station:
+        raise PermissionDenied("You can only review prisoners from your station.")
+
+    if review.review_role == 'officer_in_charge' and not (hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()):
+        raise PermissionDenied("Only the officer in charge can approve this request.")
+
+    if review.review_role == 'station_officer' and not (hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()):
+        raise PermissionDenied("Only the station officer can approve this request.")
+
+    review.status = 'approved'
+    review.reviewed_by = request.user
+    review.reviewed_at = timezone.now()
+    review.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+
+    prisoner = review.prisoner
+    prisoner.is_active = False
+    prisoner.date_released = review.release_date or timezone.now().date()
+    prisoner.save(update_fields=['is_active', 'date_released'])
+
+    messages.success(request, f"{prisoner.full_name} was approved for discharge.")
+    return redirect('release_hub')
+
+
+@login_required
+@require_POST
+def reject_release_review(request, review_id):
+    review = get_object_or_404(PrisonerReleaseReview, pk=review_id)
+
+    if review.station != request.user.prison_station:
+        raise PermissionDenied("You can only review prisoners from your station.")
+
+    if review.review_role == 'officer_in_charge' and not (hasattr(request.user, 'is_officer_in_charge') and request.user.is_officer_in_charge()):
+        raise PermissionDenied("Only the officer in charge can reject this request.")
+
+    if review.review_role == 'station_officer' and not (hasattr(request.user, 'is_station_officer') and request.user.is_station_officer()):
+        raise PermissionDenied("Only the station officer can reject this request.")
+
+    review.status = 'rejected'
+    review.reviewed_by = request.user
+    review.reviewed_at = timezone.now()
+    review.save(update_fields=['status', 'reviewed_by', 'reviewed_at'])
+
+    messages.info(request, f"{review.prisoner.full_name} was rejected for release.")
+    return redirect('release_hub')
+
+
 def dashboard(request):
     """
     Renders the dashboard with various statistics based on user roles.
@@ -650,15 +908,123 @@ def add_prisoner(request):
                 details=f'Added prisoner {prisoner.prisoner_number} to station {prisoner.prison_station.name if prisoner.prison_station else "N/A"}'
             )
 
-            # Redirect to add class-specific details
-            if prisoner.prisoner_class == 'convicted':
-                return redirect('add_convicted_details', prisoner_id=prisoner.id)
-            else: # 'remand'
-                return redirect('add_remand_details', prisoner_id=prisoner.id)
-        else:
-            messages.error(request, "Please correct the errors below.")
+            # Create notification for new admission
+            from .utils import create_new_admission_notification
+            create_new_admission_notification(prisoner)
+
+
+@login_required
+def notification_list(request):
+    """
+    API endpoint to get notifications for the current user.
+    Returns unread notifications first, then read notifications.
+    """
+    user = request.user
+    notifications = Notification.objects.filter(
+        target_users=user
+    ).exclude(
+        expires_at__lt=timezone.now()
+    ).order_by('-created_at')
+    
+    # Separate unread and read notifications
+    unread_notifications = notifications.filter(is_read=False)
+    read_notifications = notifications.filter(is_read=True)
+    
+    notification_data = []
+    
+    for notification in unread_notifications:
+        notification_data.append({
+            'id': notification.id,
+            'title': notification.title,
+            'message': notification.message,
+            'type': notification.notification_type,
+            'priority': notification.priority,
+            'is_read': notification.is_read,
+            'action_required': notification.action_required,
+            'action_url': notification.action_url,
+            'due_date': notification.due_date.isoformat() if notification.due_date else None,
+            'created_at': notification.created_at.isoformat(),
+            'prisoner_name': notification.prisoner.full_name if notification.prisoner else None,
+            'prisoner_number': notification.prisoner.prisoner_number if notification.prisoner else None,
+        })
+    
+    for notification in read_notifications:
+        notification_data.append({
+            'id': notification.id,
+            'title': notification.title,
+            'message': notification.message,
+            'type': notification.notification_type,
+            'priority': notification.priority,
+            'is_read': notification.is_read,
+            'action_required': notification.action_required,
+            'action_url': notification.action_url,
+            'due_date': notification.due_date.isoformat() if notification.due_date else None,
+            'created_at': notification.created_at.isoformat(),
+            'prisoner_name': notification.prisoner.full_name if notification.prisoner else None,
+            'prisoner_number': notification.prisoner.prisoner_number if notification.prisoner else None,
+        })
+    
+    return JsonResponse({
+        'notifications': notification_data,
+        'unread_count': unread_notifications.count(),
+        'total_count': notifications.count()
+    })
+
+
+@login_required
+@require_POST
+def mark_notification_read(request, notification_id):
+    """
+    Mark a specific notification as read.
+    """
+    notification = get_object_or_404(Notification, id=notification_id)
+    
+    if request.user in notification.target_users.all():
+        notification.mark_as_read(request.user)
+        return JsonResponse({'success': True})
     else:
-        prisoner_form = PrisonerForm(user=request.user)
+        return JsonResponse({'success': False, 'error': 'Unauthorized'}, status=403)
+
+
+@login_required
+@require_POST
+def mark_all_notifications_read(request):
+    """
+    Mark all notifications for the current user as read.
+    """
+    Notification.objects.filter(
+        target_users=request.user,
+        is_read=False
+    ).update(
+        is_read=True,
+        read_at=timezone.now(),
+        read_by=request.user
+    )
+    
+    return JsonResponse({'success': True})
+
+
+@login_required
+def notification_count(request):
+    """
+    Get the count of unread notifications for the current user.
+    """
+    count = Notification.objects.filter(
+        target_users=request.user,
+        is_read=False
+    ).exclude(
+        expires_at__lt=timezone.now()
+    ).count()
+    
+    return JsonResponse({'unread_count': count})
+
+    # Redirect to add class-specific details
+    if prisoner.prisoner_class == 'convicted':
+        return redirect('add_convicted_details', prisoner_id=prisoner.id)
+    else: # 'remand'
+        return redirect('add_remand_details', prisoner_id=prisoner.id)
+    
+    prisoner_form = PrisonerForm(user=request.user)
 
     context = {
         'prisoner_form': prisoner_form,

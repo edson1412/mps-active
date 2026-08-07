@@ -557,6 +557,196 @@
         .alert-danger { background: #fee2e2; color: #991b1b; }
         .alert-warning { background: #fef3c7; color: #92400e; }
         .alert-info { background: #dbeafe; color: #1e40af; }
+
+        /* ===== NOTIFICATION STYLES ===== */
+        .notification-btn {
+            position: relative;
+        }
+
+        .notification-badge {
+            position: absolute;
+            top: -2px;
+            right: -2px;
+            background: #ef4444;
+            color: white;
+            font-size: 0.65rem;
+            font-weight: 600;
+            min-width: 18px;
+            height: 18px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 4px;
+        }
+
+        .notification-dropdown {
+            width: 380px;
+            max-height: 450px;
+            overflow: hidden;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+            border-radius: 12px;
+            padding: 0;
+        }
+
+        .notification-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.6);
+            background: #f8fafc;
+        }
+
+        .notification-header h6 {
+            margin: 0;
+            font-weight: 600;
+            color: #0f172a;
+            font-size: 0.9rem;
+        }
+
+        .mark-all-read-btn {
+            font-size: 0.75rem;
+            color: #3b82f6;
+            padding: 2px 8px;
+            text-decoration: none;
+        }
+
+        .mark-all-read-btn:hover {
+            text-decoration: underline;
+        }
+
+        .notification-list {
+            max-height: 350px;
+            overflow-y: auto;
+            padding: 8px 0;
+        }
+
+        .notification-list::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .notification-list::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .notification-list::-webkit-scrollbar-thumb {
+            background: rgba(0,0,0,0.15);
+            border-radius: 10px;
+        }
+
+        .notification-item {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(226, 232, 240, 0.4);
+            cursor: pointer;
+            transition: background 0.15s ease;
+            position: relative;
+        }
+
+        .notification-item:hover {
+            background: #f8fafc;
+        }
+
+        .notification-item.unread {
+            background: #eff6ff;
+        }
+
+        .notification-item.unread::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 0;
+            bottom: 0;
+            width: 3px;
+            background: #3b82f6;
+        }
+
+        .notification-title {
+            font-weight: 600;
+            color: #0f172a;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .notification-title .priority-indicator {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .priority-urgent { background: #ef4444; }
+        .priority-high { background: #f97316; }
+        .priority-medium { background: #eab308; }
+        .priority-low { background: #22c55e; }
+
+        .notification-message {
+            color: #475569;
+            font-size: 0.8rem;
+            line-height: 1.4;
+            margin-bottom: 6px;
+        }
+
+        .notification-meta {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.7rem;
+            color: #94a3b8;
+        }
+
+        .notification-type {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 0.7rem;
+            font-weight: 500;
+        }
+
+        .type-medical { background: #dbeafe; color: #1e40af; }
+        .type-release { background: #fef3c7; color: #92400e; }
+        .type-admission { background: #dcfce7; color: #166534; }
+        .type-general { background: #f1f5f9; color: #475569; }
+
+        .notification-loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 24px;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .notification-empty {
+            text-align: center;
+            padding: 24px;
+            color: #94a3b8;
+            font-size: 0.85rem;
+        }
+
+        .notification-footer {
+            padding: 12px 16px;
+            border-top: 1px solid rgba(226, 232, 240, 0.6);
+            background: #f8fafc;
+            text-align: center;
+        }
+
+        .view-all-btn {
+            font-size: 0.8rem;
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .view-all-btn:hover {
+            text-decoration: underline;
+        }
     </style>
 </head>
 <body>
@@ -587,6 +777,12 @@
                 <a href="{% url 'dashboard' %}" class="nav-link {% if request.path == '/' %}active{% endif %}">
                     <i class="bi bi-speedometer2"></i> Dashboard
                 </a>
+
+                {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_officer_in_charge or request.user.is_station_officer %}
+                <a href="{% url 'release_hub' %}" class="nav-link {% if 'release_hub' in request.path %}active{% endif %}">
+                    <i class="bi bi-box-arrow-right"></i> Release Hub
+                </a>
+                {% endif %}
 
                 <!-- Prisoners -->
                 {% if request.user.is_super_admin or request.user.is_prison_admin or request.user.is_reception or request.user.is_warden %}
@@ -785,11 +981,28 @@
                     </div>
                 </div>
                 <div class="header-actions">
-                    <!-- Notifications (optional) -->
-                    <button class="header-btn" title="Notifications">
-                        <i class="bi bi-bell"></i>
-                        <span class="badge-dot"></span>
-                    </button>
+                    <!-- Notifications -->
+                    <div class="dropdown">
+                        <button class="header-btn notification-btn" id="notificationBtn" data-bs-toggle="dropdown" aria-expanded="false" title="Notifications">
+                            <i class="bi bi-bell"></i>
+                            <span class="notification-badge" id="notificationBadge" style="display: none;">0</span>
+                        </button>
+                        <div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="notificationBtn">
+                            <div class="notification-header">
+                                <h6>Notifications</h6>
+                                <button class="btn btn-sm btn-link mark-all-read-btn" id="markAllReadBtn">Mark all as read</button>
+                            </div>
+                            <div class="notification-list" id="notificationList">
+                                <div class="notification-loading">
+                                    <div class="spinner-border spinner-border-sm" role="status"></div>
+                                    <span>Loading notifications...</span>
+                                </div>
+                            </div>
+                            <div class="notification-footer">
+                                <a href="#" class="btn btn-sm btn-outline-primary view-all-btn">View All</a>
+                            </div>
+                        </div>
+                    </div>
                     <!-- User Dropdown -->
                     <div class="dropdown">
                         <a href="#" class="user-dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
@@ -839,6 +1052,197 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="{% static 'js/scripts.js' %}"></script>
     <script>
+        // Notification System
+        class NotificationSystem {
+            constructor() {
+                this.notificationBtn = document.getElementById('notificationBtn');
+                this.notificationBadge = document.getElementById('notificationBadge');
+                this.notificationList = document.getElementById('notificationList');
+                this.markAllReadBtn = document.getElementById('markAllReadBtn');
+                this.init();
+            }
+
+            init() {
+                if (this.notificationBtn) {
+                    // Load notifications when dropdown is shown
+                    this.notificationBtn.addEventListener('shown.bs.dropdown', () => {
+                        this.loadNotifications();
+                    });
+
+                    // Mark all as read
+                    if (this.markAllReadBtn) {
+                        this.markAllReadBtn.addEventListener('click', (e) => {
+                            e.preventDefault();
+                            this.markAllAsRead();
+                        });
+                    }
+                }
+
+                // Periodically update notification count
+                this.updateNotificationCount();
+                setInterval(() => this.updateNotificationCount(), 60000); // Update every minute
+            }
+
+            async loadNotifications() {
+                try {
+                    const response = await fetch('/notifications/');
+                    const data = await response.json();
+
+                    if (data.notifications) {
+                        this.renderNotifications(data.notifications);
+                    }
+                } catch (error) {
+                    console.error('Error loading notifications:', error);
+                    this.notificationList.innerHTML = `
+                        <div class="notification-empty">
+                            <i class="bi bi-exclamation-circle"></i>
+                            <p>Failed to load notifications</p>
+                        </div>
+                    `;
+                }
+            }
+
+            renderNotifications(notifications) {
+                if (notifications.length === 0) {
+                    this.notificationList.innerHTML = `
+                        <div class="notification-empty">
+                            <i class="bi bi-bell-slash"></i>
+                            <p>No notifications</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                this.notificationList.innerHTML = notifications.map(notification => `
+                    <div class="notification-item ${notification.is_read ? '' : 'unread'}" 
+                         data-notification-id="${notification.id}"
+                         onclick="notificationSystem.handleNotificationClick(${notification.id}, '${notification.action_url || ''}')">
+                        <div class="notification-title">
+                            <span class="priority-indicator priority-${notification.priority}"></span>
+                            ${this.escapeHtml(notification.title)}
+                        </div>
+                        <div class="notification-message">${this.escapeHtml(notification.message)}</div>
+                        <div class="notification-meta">
+                            <span class="notification-type type-${notification.notification_type}">
+                                ${this.getTypeIcon(notification.notification_type)}
+                                ${this.getTypeLabel(notification.notification_type)}
+                            </span>
+                            <span>${this.formatDate(notification.created_at)}</span>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            async handleNotificationClick(notificationId, actionUrl) {
+                // Mark as read
+                try {
+                    await fetch(`/notifications/${notificationId}/read/`, {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': this.getCsrfToken(),
+                            'Content-Type': 'application/json',
+                        }
+                    });
+                } catch (error) {
+                    console.error('Error marking notification as read:', error);
+                }
+
+                // Navigate to action URL if provided
+                if (actionUrl) {
+                    window.location.href = actionUrl;
+                }
+            }
+
+            async markAllAsRead() {
+                try {
+                    const response = await fetch('/notifications/read-all/', {
+                        method: 'POST',
+                        headers: {
+                            'X-CSRFToken': this.getCsrfToken(),
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (response.ok) {
+                        this.loadNotifications();
+                        this.updateNotificationCount();
+                    }
+                } catch (error) {
+                    console.error('Error marking all as read:', error);
+                }
+            }
+
+            async updateNotificationCount() {
+                try {
+                    const response = await fetch('/notifications/count/');
+                    const data = await response.json();
+
+                    if (data.unread_count > 0) {
+                        this.notificationBadge.textContent = data.unread_count > 99 ? '99+' : data.unread_count;
+                        this.notificationBadge.style.display = 'flex';
+                    } else {
+                        this.notificationBadge.style.display = 'none';
+                    }
+                } catch (error) {
+                    console.error('Error updating notification count:', error);
+                }
+            }
+
+            getTypeIcon(type) {
+                const icons = {
+                    'medical_checkup': '<i class="bi bi-heart-pulse"></i>',
+                    'near_release': '<i class="bi bi-calendar-check"></i>',
+                    'new_admission': '<i class="bi bi-person-plus"></i>',
+                    'general': '<i class="bi bi-bell"></i>'
+                };
+                return icons[type] || icons['general'];
+            }
+
+            getTypeLabel(type) {
+                const labels = {
+                    'medical_checkup': 'Medical',
+                    'near_release': 'Release',
+                    'new_admission': 'Admission',
+                    'general': 'General'
+                };
+                return labels[type] || 'General';
+            }
+
+            formatDate(dateString) {
+                const date = new Date(dateString);
+                const now = new Date();
+                const diffMs = now - date;
+                const diffMins = Math.floor(diffMs / 60000);
+                const diffHours = Math.floor(diffMs / 3600000);
+                const diffDays = Math.floor(diffMs / 86400000);
+
+                if (diffMins < 1) return 'Just now';
+                if (diffMins < 60) return `${diffMins}m ago`;
+                if (diffHours < 24) return `${diffHours}h ago`;
+                if (diffDays < 7) return `${diffDays}d ago`;
+                return date.toLocaleDateString();
+            }
+
+            escapeHtml(text) {
+                const div = document.createElement('div');
+                div.textContent = text;
+                return div.innerHTML;
+            }
+
+            getCsrfToken() {
+                const cookies = document.cookie.split(';');
+                for (let cookie of cookies) {
+                    const [name, value] = cookie.trim().split('=');
+                    if (name === 'csrftoken') {
+                        return decodeURIComponent(value);
+                    }
+                }
+                return '';
+            }
+        }
+
+        // Initialize notification system
+        let notificationSystem;
         document.addEventListener('DOMContentLoaded', function() {
             // Sidebar toggle
             const sidebarToggle = document.getElementById('sidebarToggle');
@@ -883,6 +1287,9 @@
                     }
                 }
             });
+
+            // Initialize notification system
+            notificationSystem = new NotificationSystem();
         });
     </script>
     {% block extra_js %}{% endblock %}

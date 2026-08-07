@@ -76,6 +76,12 @@ urlpatterns = [
     # Reports
     path('reports/upcoming-releases/', views.upcoming_releases_report, name='upcoming_releases_report'),
 
+    # Release Hub URLs
+    path('release-hub/', views.release_hub, name='release_hub'),
+    path('release-hub/<int:prisoner_id>/forward/', views.forward_release_for_review, name='forward_release_for_review'),
+    path('release-hub/reviews/<int:review_id>/approve/', views.approve_release_review, name='approve_release_review'),
+    path('release-hub/reviews/<int:review_id>/reject/', views.reject_release_review, name='reject_release_review'),
+
     # NEW: Ration Management URLs
     path('rations/', RationItemListView.as_view(), name='ration_item_list'), # List and Add via POST
     path('rations/<int:pk>/edit/', RationItemUpdateView.as_view(), name='edit_ration_item'),
@@ -85,6 +91,12 @@ urlpatterns = [
 
     # Authentication URLs
     path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
+
+    # Notification URLs
+    path('notifications/', views.notification_list, name='notification_list'),
+    path('notifications/<int:notification_id>/read/', views.mark_notification_read, name='mark_notification_read'),
+    path('notifications/read-all/', views.mark_all_notifications_read, name='mark_all_notifications_read'),
+    path('notifications/count/', views.notification_count, name='notification_count'),
 
     # NEW: Prison Station Management URLs
     path('stations/manage/', views.manage_prison_stations, name='manage_prison_stations'),
