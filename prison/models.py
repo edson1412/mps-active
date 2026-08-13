@@ -14,18 +14,36 @@ import json
 
 User = get_user_model()
 
-class PrisonStation(models.Model):
-    REGION_CHOICES = [
-        ('southern', 'Southern Region'),
-        ('northern', 'Northern Region'),
-        ('eastern', 'Eastern Region'),
-        ('central', 'Central Region'),
-    ]
+class Region(models.Model):
+    """Region a prison station belongs to.
 
+    Shared by both modules: inmate records are scoped through their station's
+    region and officers/users are scoped directly by region.
+    """
+
+    name = models.CharField(max_length=100, unique=True)
+    code = models.SlugField(max_length=20, unique=True)
+    description = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Region"
+        verbose_name_plural = "Regions"
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
+class PrisonStation(models.Model):
     name = models.CharField(max_length=100, unique=True)
     code = models.CharField(max_length=10, unique=True)
     location = models.CharField(max_length=100)
-    region = models.CharField(max_length=10, choices=REGION_CHOICES, default='southern')
+    region = models.ForeignKey(
+        Region,
+        on_delete=models.PROTECT,
+        related_name='stations',
+    )
+    contact_number = models.CharField(max_length=20, blank=True)
     capacity = models.PositiveIntegerField()
     date_established = models.DateField()
     created_by = models.ForeignKey(
@@ -37,7 +55,7 @@ class PrisonStation(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
-        return f"{self.name} ({self.get_region_display()})"
+        return f"{self.name} ({self.region.name})"
 
     class Meta:
         verbose_name = "Prison Station"

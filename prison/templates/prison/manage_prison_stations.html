@@ -26,6 +26,7 @@
                             <th>Name</th>
                             <th>Code</th>
                             <th>Location</th>
+                            <th>Region</th>
                             <th>Capacity</th>
                             <th>Established</th>
                             <th>Created By</th>
@@ -38,6 +39,7 @@
                             <td>{{ station.name }}</td>
                             <td>{{ station.code }}</td>
                             <td>{{ station.location }}</td>
+                            <td>{{ station.region.name }}</td>
                             <td>{{ station.capacity }}</td>
                             <td>{{ station.date_established|date:"Y-m-d" }}</td>
                             <td>{{ station.created_by.get_full_name }}</td>

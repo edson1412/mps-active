@@ -216,25 +216,24 @@ def _get_regional_summary_data(prisoners_qs, single_region=False):
         if not stations.exists():
             return None
             
-        region_name = stations.first().get_region_display()
+        region_name = stations.first().region.name
         region_data = _calculate_region_data(stations, prisoners_qs)
         return {region_name: region_data}
     else:
         # For super admin, group by all regions
-        regions = PrisonStation.REGION_CHOICES
         regional_summary = {}
         
-        for region_code, region_display in regions:
-            region_stations = PrisonStation.objects.filter(region=region_code)
+        for region in Region.objects.all():
+            region_stations = PrisonStation.objects.filter(region=region)
             if not region_stations.exists():
                 continue
                 
-            region_prisoners = prisoners_qs.filter(prison_station__region=region_code)
+            region_prisoners = prisoners_qs.filter(prison_station__region=region)
             if not region_prisoners.exists():
                 continue
                 
             region_data = _calculate_region_data(region_stations, region_prisoners)
-            regional_summary[region_display] = region_data
+            regional_summary[region.name] = region_data
         
         return regional_summary
 

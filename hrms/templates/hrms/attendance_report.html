@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}{{ title }} - Prison HRMS{% endblock %}
+
+{% block content %}
+<div class="container mt-5 mb-5">
+    <div class="card shadow-lg p-4" style="border-radius: 15px;">
+        <div class="card-body">
+            <h2 class="card-title text-center mb-4" style="color: #0056b3; font-weight: bold;">{{ title }}</h2>
+            <hr class="mb-4">
+
+            {# Filter Form #}
+            <form method="get" class="mb-4 p-3 border rounded-3 bg-light">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-3">
+                        <label for="id_year" class="form-label">Year:</label>
+                        <select name="year" id="id_year" class="form-select rounded-pill">
+                            {% for year in available_years %}
+                                <option value="{{ year }}" {% if year|stringformat:"s" == selected_year %}selected{% endif %}>{{ year }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_month" class="form-label">Month:</label>
+                        <select name="month" id="id_month" class="form-select rounded-pill">
+                            <option value="">All Months</option>
+                            {% for month in months %}
+                                <option value="{{ month.value }}" {% if month.value|stringformat:"s" == selected_month %}selected{% endif %}>{{ month.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_region" class="form-label">Region:</label>
+                        <select name="region" id="id_region" class="form-select rounded-pill">
+                            <option value="">All Regions</option>
+                            {% for region in regions %}
+                                <option value="{{ region.pk }}" {% if region.pk|stringformat:"s" == selected_region_id %}selected{% endif %}>{{ region.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <label for="id_station" class="form-label">Prison Station:</label>
+                        <select name="station" id="id_station" class="form-select rounded-pill">
+                            <option value="">All Stations</option>
+                            {% for station in stations %}
+                                <option value="{{ station.pk }}" {% if station.pk|stringformat:"s" == selected_station_id %}selected{% endif %}>{{ station.name }} ({{ station.region.name }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-12 text-end">
+                        <button type="submit" class="btn btn-primary rounded-pill me-2">
+                            <i class="fas fa-filter me-1"></i> Generate Report
+                        </button>
+                        <a href="{% url 'hrms:attendance_report' %}" class="btn btn-outline-secondary rounded-pill">
+                            <i class="fas fa-redo me-1"></i> Reset Filters
+                        </a>
+                    </div>
+                </div>
+            </form>
+
+            {# Report Summary #}
+            <h4 class="text-primary mt-5 mb-3"><i class="fas fa-chart-pie me-2"></i>Attendance Summary</h4>
+            {% if total_records > 0 %}
+                <div class="row mb-4">
+                    <div class="col-md-4">
+                        <div class="card text-white bg-success mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-check-circle me-2"></i>Present</h5>
+                                <p class="card-text fs-4">{{ summary_data.present|default:0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-danger mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-times-circle me-2"></i>Absent</h5>
+                                <p class="card-text fs-4">{{ summary_data.absent|default:0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-warning mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-calendar-times me-2"></i>On Leave</h5>
+                                <p class="card-text fs-4">{{ summary_data.on_leave|default:0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-info mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-medkit me-2"></i>Sick</h5>
+                                <p class="card-text fs-4">{{ summary_data.sick|default:0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="card text-white bg-secondary mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-briefcase me-2"></i>Official Duty</h5>
+                                <p class="card-text fs-4">{{ summary_data.official_duty|default:0 }}</p>
+                            </div>
+                        </div>
+                    </div>
+                     <div class="col-md-4">
+                        <div class="card text-white bg-dark mb-3 rounded-3 shadow-sm">
+                            <div class="card-body">
+                                <h5 class="card-title"><i class="fas fa-list me-2"></i>Total Records</h5>
+                                <p class="card-text fs-4">{{ total_records }}</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                {# Optional: Detailed breakdown by officer (can be extensive for large datasets) #}
+                {# You might want to add pagination or a separate view for this #}
+                {# For now, let's keep it simple and just show the summary #}
+
+            {% else %}
+                <div class="alert alert-info text-center" role="alert">
+                    No attendance data found for the selected filters.
+                </div>
+            {% endif %}
+
+            <div class="text-center mt-4">
+                <a href="{% url 'hrms:dashboard' %}" class="btn btn-outline-secondary rounded-pill">
+                    <i class="fas fa-arrow-circle-left me-2"></i> Back to Dashboard
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
