@@ -1,0 +1,143 @@
+{% extends 'hrms/layouts/page.html' %}
+{% load static %}
+
+{% block title %}Officer List - Prison HRMS{% endblock %}
+
+{% block page_title %}Officer Directory{% endblock %}
+
+{% block page_description %}
+<p class="page-subtitle">Unified roster tracking with quick filters across rank, deployment, and readiness.</p>
+{% endblock %}
+
+{% block page_actions %}
+<a href="{% url 'hrms:officer_create' %}" class="btn btn-primary btn-pill">
+    <i class="fas fa-user-plus me-2"></i> Add Officer
+</a>
+{% endblock %}
+
+{% block page_filters %}
+<form method="get" class="filter-bar w-100">
+    <div class="row g-3 w-100">
+        <div class="col-12 col-md-6 col-lg-4">
+            <label for="search-input" class="form-label">Search</label>
+            <input type="text" name="search" id="search-input" class="form-control" placeholder="Search by name or service number..." value="{{ search_query|default:'' }}">
+        </div>
+        <div class="col-12 col-md-6 col-lg-2">
+            <label for="rank-filter" class="form-label">Rank</label>
+            <select name="rank" id="rank-filter" class="form-select">
+                <option value="all" {% if not current_rank_filter or current_rank_filter == 'all' %}selected{% endif %}>All Ranks</option>
+                {% for rank in ranks %}
+                    <option value="{{ rank.name }}" {% if current_rank_filter == rank.name %}selected{% endif %}>{{ rank.name|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-12 col-md-6 col-lg-2">
+            <label for="station-filter" class="form-label">Station</label>
+            <select name="station" id="station-filter" class="form-select">
+                <option value="all" {% if not current_station_filter or current_station_filter == 'all' %}selected{% endif %}>All Stations</option>
+                {% for station in stations %}
+                    <option value="{{ station.name }}" {% if current_station_filter == station.name %}selected{% endif %}>{{ station.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% if is_national_level_user %}
+        <div class="col-12 col-md-6 col-lg-2">
+            <label for="region-filter" class="form-label">Region</label>
+            <select name="region" id="region-filter" class="form-select">
+                <option value="all" {% if not current_region_filter or current_region_filter == 'all' %}selected{% endif %}>All Regions</option>
+                {% for region in regions %}
+                    <option value="{{ region.name }}" {% if current_region_filter == region.name %}selected{% endif %}>{{ region.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        {% endif %}
+        <div class="col-12 col-md-6 col-lg-2">
+            <label for="status-filter" class="form-label">Status</label>
+            <select name="status" id="status-filter" class="form-select">
+                <option value="all" {% if not current_status_filter or current_status_filter == 'all' %}selected{% endif %}>All Statuses</option>
+                <option value="active" {% if current_status_filter == 'active' %}selected{% endif %}>Active</option>
+                <option value="retired" {% if current_status_filter == 'retired' %}selected{% endif %}>Retired</option>
+                <option value="interdicted" {% if current_status_filter == 'interdicted' %}selected{% endif %}>Interdicted</option>
+            </select>
+        </div>
+        <div class="col-12 d-flex justify-content-end gap-2">
+            <button type="submit" class="btn btn-primary btn-pill">
+                <i class="fas fa-filter me-2"></i> Apply Filters
+            </button>
+            <a href="{% url 'hrms:officer_list' %}" class="btn btn-outline-secondary btn-pill">
+                <i class="fas fa-sync-alt me-2"></i> Reset
+            </a>
+        </div>
+    </div>
+</form>
+{% endblock %}
+
+{% block page_body %}
+<div class="surface-card table-modern">
+    {% if officers %}
+        <div class="table-responsive">
+            <table class="table table-hover align-middle">
+                <thead>
+                    <tr>
+                        <th scope="col">Picture</th>
+                        <th scope="col">Service No.</th>
+                        <th scope="col">Full Name</th>
+                        <th scope="col">Rank</th>
+                        <th scope="col">Station</th>
+                        <th scope="col">Region</th>
+                        <th scope="col">Status</th>
+                        <th scope="col" class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for officer in officers %}
+                    <tr>
+                        <td>
+                            {% if officer.officer_picture %}
+                                <img src="{{ officer.officer_picture.url }}" alt="{{ officer.full_name }}" class="avatar shadow-sm">
+                            {% else %}
+                                <span class="avatar avatar-placeholder shadow-sm">
+                                    <i class="fas fa-user"></i>
+                                </span>
+                            {% endif %}
+                        </td>
+                        <td>{{ officer.service_number }}</td>
+                        <td>
+                            <a href="{% url 'hrms:officer_detail' service_number=officer.service_number %}" class="link-underline fw-semibold">
+                                {{ officer.full_name }}
+                            </a>
+                        </td>
+                        <td>{{ officer.rank.get_name_display|default:"N/A" }}</td>
+                        <td>{{ officer.prison_station.name|default:"N/A" }}</td>
+                        <td>{{ officer.region.name|default:"N/A" }}</td>
+                        <td>
+                            <span class="badge rounded-pill {% if officer.status == 'active' %}bg-success{% elif officer.status == 'on_leave' %}bg-warning text-dark{% elif officer.status == 'retired' %}bg-secondary{% else %}bg-info{% endif %}">
+                                {{ officer.get_status_display }}
+                            </span>
+                        </td>
+                        <td>
+                            <div class="action-stack justify-content-end">
+                                <a href="{% url 'hrms:officer_detail' service_number=officer.service_number %}" class="btn btn-outline-info btn-sm btn-pill" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </a>
+                                <a href="{% url 'hrms:officer_update' service_number=officer.service_number %}" class="btn btn-outline-warning btn-sm btn-pill" title="Edit Officer">
+                                    <i class="fas fa-edit"></i>
+                                </a>
+                                <a href="{% url 'hrms:officer_delete' service_number=officer.service_number %}" class="btn btn-outline-danger btn-sm btn-pill" title="Delete Officer">
+                                    <i class="fas fa-trash-alt"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <i class="fas fa-user-shield"></i>
+            <p>No officers found matching your criteria. Try adjusting your filters.</p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,5 +1,4 @@
 from django.urls import path
-from django.contrib.auth import views as auth_views
 from . import views
 from .views import (
     VisitorListView, VisitorCreateView, VisitorUpdateView, VisitorApproveView, VisitorDetailView,
@@ -90,7 +89,6 @@ urlpatterns = [
     path('rations/procure/', RationProcurementCreateView.as_view(), name='record_procurement'),
 
     # Authentication URLs
-    path('accounts/login/', auth_views.LoginView.as_view(template_name='registration/login.html'), name='login'),
 
     # Notification URLs
     path('notifications/', views.notification_list, name='notification_list'),

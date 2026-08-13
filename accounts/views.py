@@ -1,72 +1,56 @@
-from django.urls import path
-from . import views
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .forms import CustomUserCreationForm, CustomPasswordChangeForm
-from django.contrib.auth.views import PasswordChangeView
-from django.urls import reverse_lazy
-from .models import CustomUser
 from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.views import PasswordChangeView
 from django.core.exceptions import PermissionDenied
+from django.urls import reverse_lazy
+
+from .forms import CustomUserCreationForm, CustomPasswordChangeForm
+from .models import CustomUser
+from .routing import landing_url_for
+
 
 def login_view(request):
+    """Single sign-in page for both the officers (HRMS) and inmates modules."""
     if request.user.is_authenticated:
-        return redirect(reverse_lazy('dashboard'))
+        return redirect(landing_url_for(request.user))
 
     if request.method == 'POST':
         form = AuthenticationForm(request, data=request.POST)
         if form.is_valid():
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password')
-            user = authenticate(request, username=username, password=password)
+            user = authenticate(
+                request,
+                username=form.cleaned_data.get('username'),
+                password=form.cleaned_data.get('password'),
+            )
             if user is not None:
                 login(request, user)
-
-                # Redirect based on user role
-                if user.is_super_admin():
-                    return redirect(reverse_lazy('dashboard'))
-                elif user.is_prison_admin():
-                    return redirect(reverse_lazy('dashboard'))
-                elif user.is_reception():
-                    return redirect(reverse_lazy('release_hub'))
-                elif user.is_officer_in_charge():
-                    return redirect(reverse_lazy('release_hub'))
-                elif user.is_station_officer():
-                    return redirect(reverse_lazy('release_hub'))
-                elif user.is_visitor_attendant():
-                    return redirect(reverse_lazy('visitor_list'))
-                elif user.is_medical_officer():
-                    return redirect(reverse_lazy('medical_record_list'))
-                elif user.is_warden():
-                    return redirect(reverse_lazy('incident_report_list'))
-                else:
-                    return redirect(reverse_lazy('dashboard'))
+                if user.must_change_password:
+                    messages.info(request, 'Please change your password before continuing.')
+                    return redirect('change_password')
+                return redirect(landing_url_for(user))
     else:
         form = AuthenticationForm()
     return render(request, 'accounts/login.html', {'form': form})
 
+
 @login_required
 def logout_view(request):
     logout(request)
-    messages.success(request, 'You have been logged in successfully.')
+    messages.success(request, 'You have been logged out successfully.')
     return redirect('login')
 
-@login_required
-def change_password(request):
-    if request.method == 'POST':
-        form = CustomPasswordChangeForm(request.user, request.POST)
-        if form.is_valid():
-            user = form.save()
-            user.must_change_password = False
-            user.save()
-            messages.success(request, 'Your password was successfully updated!')
-            return redirect('dashboard')
-    else:
-        form = CustomPasswordChangeForm(request.user)
 
-    return render(request, 'accounts/change_password.html', {'form': form})
+@login_required
+def user_profile_view(request):
+    """Displays the current user's profile information."""
+    return render(request, 'accounts/user_profile.html', {
+        'user': request.user,
+        'title': 'User Profile',
+    })
+
 
 @login_required
 def create_user(request):
@@ -82,7 +66,7 @@ def create_user(request):
 
             # Prison admins can't create super admins or other admins
             if request.user.is_prison_admin():
-                if form.cleaned_data['role'] in ['superuser', 'admin']:
+                if form.cleaned_data['role'] in [CustomUser.ROLE_SUPERUSER, CustomUser.ROLE_ADMIN]:
                     messages.error(request, "You don't have permission to create users with this role.")
                     return render(request, 'accounts/create_user.html', {'form': form})
 
@@ -94,6 +78,7 @@ def create_user(request):
 
     return render(request, 'accounts/create_user.html', {'form': form})
 
+
 @login_required
 def user_list(request):
     # Only super admins and prison admins can view user list
@@ -104,9 +89,10 @@ def user_list(request):
     if request.user.is_super_admin():
         users = CustomUser.objects.all()
     else:
-        users = CustomUser.objects.exclude(role__in=['superuser', 'admin'])
+        users = CustomUser.objects.exclude(role__in=[CustomUser.ROLE_SUPERUSER, CustomUser.ROLE_ADMIN])
 
     return render(request, 'accounts/user_list.html', {'users': users})
+
 
 @login_required
 def toggle_user_status(request, user_id):
@@ -128,19 +114,17 @@ def toggle_user_status(request, user_id):
     messages.success(request, f'User {user.username} has been {status}.')
     return redirect('user_list')
 
+
 class CustomPasswordChangeView(PasswordChangeView):
     form_class = CustomPasswordChangeForm
-    success_url = reverse_lazy('dashboard')
     template_name = 'accounts/change_password.html'
+
+    def get_success_url(self):
+        return landing_url_for(self.request.user)
 
     def form_valid(self, form):
         response = super().form_valid(form)
         self.request.user.must_change_password = False
-        self.request.user.save()
+        self.request.user.save(update_fields=['must_change_password'])
         messages.success(self.request, 'Your password was successfully updated!')
         return response
-
-urlpatterns = [
-    # ... other url patterns ...
-    path('change-password/', views.CustomPasswordChangeView.as_view(), name='change_password'),
-]

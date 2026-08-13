@@ -1,0 +1,715 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Prison HRMS - Modern Human Resource Management System for Prison Services">
+    <title>{% block title %}Prison HRMS{% endblock %}</title>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=General+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <!-- Bootstrap 5.3 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    
+    <!-- Font Awesome 6.5 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    
+    <!-- Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    
+    <!-- AOS Animation -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="{% static 'css/base.css' %}">
+    
+    {% block extra_css %}{% endblock %}
+    
+    <style>
+        label.requiredField,
+        label:not(.form-check-label) {
+            color: #0b1220 !important;
+            font-weight: 600 !important;
+        }
+        
+        :root {
+            --primary: #0f62fe;
+            --primary-dark: #0043ce;
+            --accent: #23a094;
+            --ink: #0b1220;
+            --ink-muted: #5c6275;
+            --surface: #ffffff;
+            --surface-muted: rgba(255, 255, 255, 0.08);
+            --border: rgba(15, 98, 254, 0.18);
+            --shadow-sm: 0 4px 12px rgba(15, 24, 44, 0.08);
+            --shadow: 0 20px 50px rgba(15, 24, 44, 0.12);
+            --rounded: 1rem;
+            --rounded-sm: 0.65rem;
+            --transition: all 0.25s ease;
+            --font-sans: 'General Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            --font-heading: 'Space Grotesk', 'General Sans', sans-serif;
+        }
+        
+        body {
+            font-family: var(--font-sans);
+            color: var(--ink-muted);
+            background: radial-gradient(circle at top, #eef4ff 0%, #f6f8fb 60%, #fdfdfd 100%);
+            min-height: 100vh;
+            line-height: 1.65;
+            letter-spacing: -0.01em;
+            overflow-x: hidden;
+        }
+        
+        h1, h2, h3, h4, h5, h6,
+        .h1, .h2, .h3, .h4, .h5, .h6 {
+            font-family: var(--font-heading);
+            color: var(--ink);
+            font-weight: 600;
+        }
+        
+        .app-header {
+            position: relative;
+            overflow: hidden;
+            background: linear-gradient(135deg, #06102b, #0b2b64 55%, #0f62fe);
+            color: #f7fbff;
+        }
+        
+        .header-glow {
+            position: absolute;
+            inset: -60% auto auto -25%;
+            width: 60vw;
+            height: 60vw;
+            background: radial-gradient(circle, rgba(15, 98, 254, 0.35) 0%, transparent 70%);
+            z-index: 0;
+            pointer-events: none;
+        }
+        
+        .header-top {
+            position: relative;
+            z-index: 1;
+            padding: 0.75rem 0;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        .brand-mark {
+            width: 48px;
+            height: 48px;
+            border-radius: 14px;
+            background: rgba(255, 255, 255, 0.08);
+            display: grid;
+            place-items: center;
+            font-size: 1.35rem;
+            font-weight: 600;
+            color: #fff;
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.15);
+        }
+        
+        .brand-title {
+            font-size: 1.1rem;
+            letter-spacing: 0.02em;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.85);
+            margin-bottom: 0.15rem;
+        }
+        
+        .brand-subtitle {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.65);
+        }
+        
+        .date-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.45rem 1rem;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.08);
+            color: #fff;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+        
+        .header-cta {
+            border-radius: 999px;
+            padding: 0.45rem 1.4rem;
+            font-weight: 600;
+            background: #fff;
+            color: #06224d;
+            border: none;
+            box-shadow: 0 12px 30px rgba(255, 255, 255, 0.15);
+        }
+        
+        .header-cta:hover {
+            transform: translateY(-1px);
+            color: #0b2b64;
+        }
+        
+        .icon-button {
+            width: 42px;
+            height: 42px;
+            border-radius: 50%;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            background: transparent;
+            color: #fff;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+        
+        .icon-button:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+        
+        .navbar {
+            padding: 0;
+            background: transparent;
+        }
+        
+        .nav-surface {
+            background: rgba(8, 19, 46, 0.35);
+            backdrop-filter: blur(22px);
+            border-radius: var(--rounded);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            padding: 0.5rem 1rem;
+            box-shadow: var(--shadow);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .navbar-brand {
+            font-family: var(--font-heading);
+            font-weight: 600;
+            letter-spacing: -0.02em;
+            text-transform: uppercase;
+            font-size: 1rem;
+            color: rgba(255, 255, 255, 0.85);
+        }
+        
+        .navbar-toggler {
+            border: none;
+            border-radius: 0.65rem;
+            background: rgba(255, 255, 255, 0.15);
+            color: #fff;
+            padding: 0.55rem 0.9rem;
+        }
+        
+        .main-nav .nav-link {
+            color: rgba(255, 255, 255, 0.82);
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+            font-size: 0.85rem;
+            padding: 0.65rem 1.1rem !important;
+            margin: 0 0.35rem;
+            border-radius: 999px;
+            transition: var(--transition);
+        }
+        
+        .main-nav .nav-link i {
+            font-size: 1rem;
+            margin-right: 0.4rem;
+        }
+        
+        .main-nav .nav-link:hover,
+        .main-nav .nav-link:focus {
+            background: rgba(255, 255, 255, 0.14);
+            color: #fff;
+        }
+        
+        .main-nav .nav-link.active {
+            background: rgba(255, 255, 255, 0.22);
+            box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+            color: #fff;
+        }
+        
+        .dropdown-menu {
+            border: none;
+            border-radius: var(--rounded-sm);
+            padding: 0.75rem;
+            min-width: 220px;
+            box-shadow: var(--shadow);
+        }
+        
+        .dropdown-item {
+            border-radius: 0.65rem;
+            font-weight: 500;
+            color: var(--ink-muted);
+            padding: 0.45rem 0.75rem;
+        }
+        
+        .dropdown-item:hover,
+        .dropdown-item:focus {
+            background: rgba(15, 98, 254, 0.08);
+            color: var(--primary);
+        }
+        
+        .nav-meta {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+        
+        .notification-pill {
+            position: relative;
+            width: 48px;
+            height: 48px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.25);
+            display: grid;
+            place-items: center;
+            color: #fff;
+        }
+        
+        .notification-badge {
+            position: absolute;
+            top: -4px;
+            right: -4px;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            background-color: var(--accent);
+            color: #fff;
+            font-size: 0.7rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            border: 2px solid rgba(6, 16, 43, 0.95);
+        }
+        
+        .user-chip {
+            border: 1px solid rgba(255, 255, 255, 0.18);
+            border-radius: 999px;
+            padding: 0.35rem 0.9rem;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.45rem;
+            color: #fff;
+            font-weight: 500;
+        }
+        
+        .user-chip i {
+            font-size: 1.2rem;
+        }
+        
+        main {
+            position: relative;
+            z-index: 1;
+        }
+        
+        [data-bs-theme='dark'] {
+            --primary: #5b8dff;
+            --primary-dark: #4671d9;
+            --accent: #4dd1c0;
+            --ink: #f7fbff;
+            --ink-muted: #c9d2f4;
+            --surface: #101727;
+            --surface-muted: rgba(255, 255, 255, 0.04);
+            --border: rgba(255, 255, 255, 0.12);
+        }
+        
+        [data-bs-theme='dark'] body {
+            background: radial-gradient(circle at top, #0c1529 0%, #070b16 70%, #05060c 100%);
+            color: var(--ink-muted);
+        }
+        
+        [data-bs-theme='dark'] .app-header {
+            background: linear-gradient(135deg, #04060c, #0b152f 55%, #112953);
+            color: var(--ink-muted);
+        }
+        
+        [data-bs-theme='dark'] .nav-surface {
+            background: rgba(8, 12, 20, 0.75);
+            border-color: rgba(255, 255, 255, 0.1);
+        }
+        
+        [data-bs-theme='dark'] .main-nav .nav-link {
+            color: rgba(255, 255, 255, 0.74);
+        }
+        
+        [data-bs-theme='dark'] .main-nav .nav-link.active {
+            background: rgba(255, 255, 255, 0.18);
+        }
+        
+        [data-bs-theme='dark'] .dropdown-menu {
+            background: #111827;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        
+        [data-bs-theme='dark'] .dropdown-item {
+            color: var(--ink-muted);
+        }
+        
+        [data-bs-theme='dark'] .dropdown-item:hover,
+        [data-bs-theme='dark'] .dropdown-item:focus {
+            background: rgba(91, 141, 255, 0.16);
+            color: #fff;
+        }
+        
+        [data-bs-theme='dark'] .card,
+        [data-bs-theme='dark'] .dropdown-menu {
+            background: #111a2e;
+            box-shadow: none;
+        }
+        
+        [data-bs-theme='dark'] .card-header {
+            border-bottom-color: rgba(255, 255, 255, 0.08);
+            color: var(--ink);
+        }
+        
+        [data-bs-theme='dark'] .toast {
+            background: #111a2e;
+            color: var(--ink);
+        }
+        
+        [data-bs-theme='dark'] .notification-pill {
+            border-color: rgba(255, 255, 255, 0.18);
+        }
+        
+        .card {
+            border: none;
+            border-radius: var(--rounded);
+            box-shadow: var(--shadow-sm);
+        }
+        
+        .card-header {
+            background: transparent;
+            color: var(--ink);
+            border-bottom: 1px solid rgba(12, 23, 52, 0.05);
+        }
+        
+        .toast-container {
+            position: fixed;
+            top: 1.5rem;
+            right: 1.5rem;
+            z-index: 1090;
+            max-width: 350px;
+        }
+        
+        .toast {
+            border-radius: var(--rounded-sm);
+            border: none;
+            box-shadow: var(--shadow);
+        }
+        
+        .btn {
+            border-radius: 999px;
+            font-weight: 600;
+            letter-spacing: 0.01em;
+            padding: 0.55rem 1.35rem;
+            transition: var(--transition);
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            border-color: var(--primary);
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            border-color: var(--primary-dark);
+            box-shadow: 0 15px 30px rgba(15, 98, 254, 0.25);
+            transform: translateY(-1px);
+        }
+        
+        @media (max-width: 991.98px) {
+            .header-top .container {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.75rem;
+            }
+            
+            .nav-surface {
+                border-radius: var(--rounded-sm);
+            }
+            
+            .navbar-collapse {
+                margin-top: 1rem;
+            }
+            
+            .main-nav .nav-link {
+                margin: 0.25rem 0;
+                background: rgba(255, 255, 255, 0.05);
+            }
+        }
+    </style>
+</head>
+<body class="d-flex flex-column min-vh-100">
+    <header class="app-header sticky-top">
+        <span class="header-glow"></span>
+        <div class="header-top">
+            <div class="container d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="brand-mark">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <div>
+                        <p class="brand-title mb-0">Prison Human Resource Modern Suite</p>
+                        <p class="brand-subtitle mb-0">Command · Cohesion · Compliance</p>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center flex-wrap gap-3">
+                    <div class="date-chip">
+                        <i class="far fa-calendar-alt"></i>
+                        <span id="current-date"></span>
+                    </div>
+                    <a class="btn header-cta" href="{% url 'hrms:officer_list' %}">
+                        <i class="bi bi-people-fill"></i> Team Directory
+                    </a>
+                    <button class="icon-button" type="button" id="themeToggle" aria-label="Toggle theme">
+                        <i class="bi bi-moon-stars"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <nav class="navbar navbar-expand-xl navbar-dark">
+            <div class="container nav-surface">
+                <a class="navbar-brand" href="{% url 'hrms:dashboard' %}">
+                    HQ • {{ request.user.role|default:"User" }}
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#primaryNav" aria-controls="primaryNav" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="primaryNav">
+                    <ul class="navbar-nav main-nav me-auto mb-2 mb-xl-0">
+                        <li class="nav-item">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" href="{% url 'hrms:dashboard' %}">
+                                <i class="fas fa-gauge-high"></i> Dashboard
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if 'officer' in request.resolver_match.url_name %}active{% endif %}" href="#" id="officerMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="bi bi-person-badge"></i> Officers
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="officerMenu">
+                                <li><a class="dropdown-item" href="{% url 'hrms:officer_list' %}">View Officers List</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:officer_create' %}">Add Officer</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if 'leave' in request.resolver_match.url_name %}active{% endif %}" href="#" id="leaveMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-plane-departure"></i> Leave
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="leaveMenu">
+                                <li><a class="dropdown-item" href="{% url 'hrms:leave_request_list' %}">View Leave Requests</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:annual_leave_reset' %}">Annual Leave Reset</a></li>
+                            </ul>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if 'report' in request.resolver_match.url_name %}active{% endif %}" href="#" id="reportMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-chart-bar"></i> Reports
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="reportMenu">
+                                <li><a class="dropdown-item" href="{% url 'hrms:report_list' %}">Reports Overview</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:demographics_report' %}">Demographics Report</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:leave_report' %}">Leave Report</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:attendance_report' %}">Attendance Report</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:performance_report' %}">Performance Report</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:disciplinary_report' %}">Disciplinary Report</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:service_history_report' %}">Service History Report</a></li>
+                            </ul>
+                        </li>
+                        {% if user.is_superuser or user.is_national_level %}
+                        <li class="nav-item dropdown">
+                            <a class="nav-link dropdown-toggle {% if 'region' in request.resolver_match.url_name or 'prison_station' in request.resolver_match.url_name %}active{% endif %}" href="#" id="adminMenu" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-cogs"></i> Admin
+                            </a>
+                            <ul class="dropdown-menu" aria-labelledby="adminMenu">
+                                <li><a class="dropdown-item" href="{% url 'hrms:region_list' %}">Manage Regions</a></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:prison_station_list' %}">Manage Prison Stations</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" href="{% url 'hrms:setup_initial_data' %}">Setup Initial Data</a></li>
+                            </ul>
+                        </li>
+                        {% endif %}
+                    </ul>
+                    <ul class="nav-meta ms-xl-3 navbar-nav flex-row align-items-center gap-3">
+                        <li class="nav-item">
+                            <a class="notification-pill position-relative" href="{% url 'hrms:notification_list' %}" id="notificationBell">
+                                <i class="fas fa-bell"></i>
+                                <span class="notification-badge" id="unreadNotificationCount">
+                                    {% if unread_notifications %}{{ unread_notifications.count }}{% else %}0{% endif %}
+                                </span>
+                            </a>
+                        </li>
+                        <li class="nav-item dropdown">
+                            <a class="user-chip dropdown-toggle" href="#" id="navbarDropdownUser" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                <i class="fas fa-user-circle"></i> {{ user.username }}
+                            </a>
+                            <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="navbarDropdownUser">
+                                <li><a class="dropdown-item" href="{% url 'user_profile' %}">Profile</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li>
+                                    <form action="{% url 'logout' %}" method="post" class="d-inline">
+                                        {% csrf_token %}
+                                        <button type="submit" class="dropdown-item">Logout</button>
+                                    </form>
+                                </li>
+                            </ul>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <main class="flex-grow-1 py-4">
+        {# Toast Container for Django Messages #}
+        <div class="toast-container">
+            {% if messages %}
+                {% for message in messages %}
+                    <div class="toast align-items-center text-white border-0 fade show {% if message.tags == 'success' %}text-bg-success{% elif message.tags == 'error' %}text-bg-danger{% elif message.tags == 'info' %}text-bg-info{% elif message.tags == 'warning' %}text-bg-warning{% endif %}" role="alert" aria-live="assertive" aria-atomic="true">
+                        <div class="d-flex">
+                            <div class="toast-body">
+                                {{ message }}
+                            </div>
+                            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+
+        {% block content %}
+        {% endblock %}
+    </main>
+
+    <!-- Bootstrap JS and Popper.js -->
+    <!-- Bootstrap Bundle with Popper -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- AOS Animation -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+    
+    <!-- Custom JavaScript -->
+    <script>
+        // Initialize AOS
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true
+        });
+        
+        // Initialize tooltips
+        document.addEventListener('DOMContentLoaded', function() {
+            var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+            tooltipTriggerList.map(function(tooltipTriggerEl) {
+                return new bootstrap.Tooltip(tooltipTriggerEl);
+            });
+
+            // Initialize popovers
+        var popoverTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="popover"]'));
+        popoverTriggerList.map(function(popoverTriggerEl) {
+            return new bootstrap.Popover(popoverTriggerEl);
+        });
+
+            // Auto-dismiss toast messages after 5 seconds
+            var toastElList = [].slice.call(document.querySelectorAll('.toast'));
+            var toastList = toastElList.map(function(toastEl) {
+                var toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+                toast.show();
+                return toast;
+            });
+
+            // Add active class to current nav item
+            const currentPath = window.location.pathname;
+            document.querySelectorAll('.nav-link').forEach(link => {
+                if (link.getAttribute('href') === currentPath) {
+                    link.classList.add('active');
+                }
+            });
+            
+            // Smooth scroll for anchor links
+            document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+                anchor.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    const target = document.querySelector(this.getAttribute('href'));
+                    if (target) {
+                        target.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                });
+            });
+            
+            // Theme switcher
+            function setTheme(theme) {
+                document.documentElement.setAttribute('data-bs-theme', theme);
+                localStorage.setItem('theme', theme);
+            }
+            const preferredTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+            setTheme(preferredTheme);
+
+            const themeToggleButton = document.getElementById('themeToggle');
+            if (themeToggleButton) {
+                const updateThemeIcon = (theme) => {
+                    const icon = themeToggleButton.querySelector('i');
+                    if (!icon) return;
+                    icon.className = theme === 'dark' ? 'bi bi-sunrise-fill' : 'bi bi-moon-stars';
+                };
+                updateThemeIcon(preferredTheme);
+                themeToggleButton.addEventListener('click', () => {
+                    const currentTheme = document.documentElement.getAttribute('data-bs-theme') === 'dark' ? 'dark' : 'light';
+                    const nextTheme = currentTheme === 'dark' ? 'light' : 'dark';
+                    setTheme(nextTheme);
+                    updateThemeIcon(nextTheme);
+                });
+            }
+            
+            // Update current date in the navbar
+            function updateCurrentDate() {
+                const dateElement = document.getElementById('current-date');
+                if (dateElement) {
+                    const now = new Date();
+                    const options = { 
+                        weekday: 'short', 
+                        month: 'short', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        hour12: true
+                    };
+                    dateElement.textContent = now.toLocaleDateString('en-US', options);
+                }
+            }
+            
+            // Initialize date display and update it every minute
+            updateCurrentDate();
+            setInterval(updateCurrentDate, 60000);
+            
+            // Fetch unread notification count
+            function fetchUnreadNotificationCount() {
+                fetch('{% url "hrms:unread_notification_count" %}')
+                    .then(response => response.json())
+                    .then(data => {
+                        const unreadCount = data.unread_count;
+                        const notificationCountElement = document.getElementById('unreadNotificationCount');
+
+                        if (notificationCountElement) {
+                            if (unreadCount > 0) {
+                                notificationCountElement.textContent = unreadCount;
+                                notificationCountElement.style.display = 'block';
+                            } else {
+                                notificationCountElement.textContent = '0';
+                                notificationCountElement.style.display = 'none';
+                            }
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error fetching unread notification count:', error);
+                    });
+            }
+
+            fetchUnreadNotificationCount();
+            setInterval(fetchUnreadNotificationCount, 30000);
+        });
+    </script>
+</body>
+</html>

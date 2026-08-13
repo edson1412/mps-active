@@ -13,7 +13,7 @@ User = get_user_model()
 class PrisonStationForm(forms.ModelForm):
     class Meta:
         model = PrisonStation
-        fields = ['name', 'code', 'location', 'capacity', 'date_established']
+        fields = ['name', 'code', 'region', 'location', 'contact_number', 'capacity', 'date_established']
         widgets = {
             'date_established': forms.DateInput(attrs={'type': 'date'}),
         }
