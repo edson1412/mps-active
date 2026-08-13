@@ -392,6 +392,7 @@ class RegionForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
+        self.helper.form_tag = False
         self.helper.layout = Layout(
             Column('name', css_class='form-group col-md-12 mb-3'),
             Column('code', css_class='form-group col-md-12 mb-3'),
@@ -408,6 +409,7 @@ class PrisonStationForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
+        self.helper.form_tag = False
         self.helper.layout = Layout(
             Row(
                 Column('name', css_class='form-group col-md-6 mb-3'),

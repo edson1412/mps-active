@@ -67,7 +67,7 @@ def is_regional_level(user):
 
 def is_station_level(user):
     """Checks if the user has a station-level role."""
-    return user.is_authenticated and user.role in ['station_officer_in_charge', 'station_officer', 'station_hr']
+    return user.is_authenticated and user.role in ['officer_in_charge', 'station_officer', 'station_hr']
 
 def can_manage_officer_data(user, officer_station=None, officer_region=None):
     """
@@ -420,8 +420,15 @@ def officer_list_view(request):
     stations = PrisonStation.objects.all().order_by('name')
     regions = Region.objects.all().order_by('name')
 
-    # Start with all officers
-    officers = Officer.objects.all()
+    # Start from the officers this user is allowed to see (region/station scoped)
+    officers = get_filtered_officers_queryset(request.user)
+
+    if is_regional_level(request.user) and request.user.region:
+        stations = stations.filter(region=request.user.region)
+        regions = regions.filter(pk=request.user.region.pk)
+    elif is_station_level(request.user) and request.user.prison_station:
+        stations = stations.filter(pk=request.user.prison_station.pk)
+        regions = regions.filter(pk=request.user.prison_station.region_id)
 
     # Get filter parameters from the request
     current_rank_filter = request.GET.get('rank', 'all')
