@@ -22,6 +22,9 @@ class CustomUser(AbstractUser):
     ROLE_RHO = 'regional_headquarters_officer'
     ROLE_REGIONAL_HR = 'regional_hr'
     ROLE_STATION_HR = 'station_hr'
+    ROLE_TRAINING_WING_OFFICER = 'training_wing_officer'
+    ROLE_COMMISSIONER_TRAINING_SCHOOL = 'commissioner_training_school'
+    ROLE_ICT_PERSONNEL = 'ict_personnel'
 
     ROLE_CHOICES = [
         (ROLE_SUPERUSER, 'Super Administrator'),
@@ -37,6 +40,15 @@ class CustomUser(AbstractUser):
         (ROLE_RHO, 'Region Headquarters Officer (RHO)'),
         (ROLE_REGIONAL_HR, 'Regional HR Officer'),
         (ROLE_STATION_HR, 'Station HR Officer'),
+        (ROLE_TRAINING_WING_OFFICER, 'Training Wing Officer'),
+        (ROLE_COMMISSIONER_TRAINING_SCHOOL, 'Commissioner of Training School'),
+        (ROLE_ICT_PERSONNEL, 'ICT Personnel'),
+    ]
+
+    # Roles that work inside the training wing
+    TRAINING_ROLES = [
+        ROLE_TRAINING_WING_OFFICER,
+        ROLE_COMMISSIONER_TRAINING_SCHOOL,
     ]
 
     # Roles that work inside the officers (HRMS) module
@@ -48,6 +60,9 @@ class CustomUser(AbstractUser):
         ROLE_REGIONAL_HR,
         ROLE_STATION_HR,
         ROLE_OFFICER_IN_CHARGE,
+        ROLE_TRAINING_WING_OFFICER,
+        ROLE_COMMISSIONER_TRAINING_SCHOOL,
+        ROLE_ICT_PERSONNEL,
     ]
 
     # Roles that work inside the inmates (prison) module
@@ -91,6 +106,29 @@ class CustomUser(AbstractUser):
         help_text=_("Region scope, required for regional level roles."),
     )
     must_change_password = models.BooleanField(default=True)
+    profile_picture = models.ImageField(
+        upload_to='profile_pics/',
+        blank=True,
+        null=True,
+        verbose_name=_("Profile Picture"),
+    )
+
+    # Security: failed login tracking / ICT-managed lockout
+    failed_login_attempts = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name=_("Failed Login Attempts"),
+        help_text=_("Number of consecutive failed login attempts."),
+    )
+    is_locked = models.BooleanField(
+        default=False,
+        verbose_name=_("Locked"),
+        help_text=_("When set, the account cannot log in until ICT unlocks it."),
+    )
+    require_password_reset = models.BooleanField(
+        default=False,
+        verbose_name=_("Require Password Reset"),
+        help_text=_("When set, ICT must reset this user's password before they can log in."),
+    )
 
     class Meta:
         verbose_name = _("User")
@@ -190,6 +228,26 @@ class CustomUser(AbstractUser):
     @property
     def is_station_hr(self):
         return self.role == self.ROLE_STATION_HR
+
+    @property
+    def is_training_wing_officer(self):
+        return self.role == self.ROLE_TRAINING_WING_OFFICER
+
+    @property
+    def is_commissioner_training_school(self):
+        return self.role == self.ROLE_COMMISSIONER_TRAINING_SCHOOL
+
+    @property
+    def is_ict_personnel(self):
+        return self.role == self.ROLE_ICT_PERSONNEL
+
+    @property
+    def can_access_training(self):
+        return (
+            self.is_super_admin()
+            or self.is_national_level
+            or self.role in self.TRAINING_ROLES
+        )
 
     # ------------------------------------------------------------------
     # Module access

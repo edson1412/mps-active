@@ -1476,16 +1476,33 @@ textarea.form-control {
   background: var(--gray-100);
 }
 
+.avatar-sm {
+  width: 32px !important;
+  height: 32px !important;
+  border-radius: 50%;
+  object-fit: cover;
+  background: var(--gray-100);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
 .avatar-placeholder {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: rgba(74, 108, 247, 0.1);
-  color: var(--primary);
-  display: inline-flex;
+  background: var(--gray-100);
+  display: flex;
   align-items: center;
   justify-content: center;
+  color: var(--gray-500);
   font-size: 1.1rem;
+}
+
+.avatar-placeholder.avatar-sm {
+  width: 32px !important;
+  height: 32px !important;
+  font-size: 0.8rem !important;
 }
 
 .avatar-lg {

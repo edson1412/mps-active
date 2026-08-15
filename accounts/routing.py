@@ -23,6 +23,9 @@ ROLE_LANDING_URLS = {
     CustomUser.ROLE_RHO: 'hrms:dashboard',
     CustomUser.ROLE_REGIONAL_HR: 'hrms:dashboard',
     CustomUser.ROLE_STATION_HR: 'hrms:dashboard',
+    CustomUser.ROLE_TRAINING_WING_OFFICER: 'hrms:training_dashboard',
+    CustomUser.ROLE_COMMISSIONER_TRAINING_SCHOOL: 'hrms:training_dashboard',
+    CustomUser.ROLE_ICT_PERSONNEL: 'hrms:ict_dashboard',
 }
 
 DEFAULT_LANDING_URL_NAME = 'dashboard'

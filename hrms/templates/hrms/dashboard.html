@@ -106,12 +106,41 @@
         border-radius: 1.25rem;
         background: #fff;
         border: 1px solid rgba(15, 23, 42, 0.08);
-        box-shadow: 0 10px 25px rgba(15, 23, 42, 0.07);
+        box-shadow: var(--shadow-soft);
         padding: 1.5rem;
         position: relative;
         overflow: hidden;
-        transition: transform 200ms ease, box-shadow 200ms ease;
+        transition: var(--transition-smooth);
         height: 100%;
+        animation: slideInUp 0.6s ease-out;
+    }
+
+    @keyframes slideInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .metric-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 4px;
+        background: linear-gradient(90deg, var(--primary-color), var(--primary-dark));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.6s ease;
+    }
+
+    .metric-card:hover::before {
+        transform: scaleX(1);
     }
 
     .metric-card::after {
@@ -120,12 +149,209 @@
         inset: 0;
         background: radial-gradient(circle at top right, rgba(74,108,247,0.15), transparent 55%);
         opacity: 0;
-        transition: opacity 200ms ease;
+        transition: opacity 0.3s ease;
     }
 
     .metric-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        box-shadow: var(--shadow-large);
+        border-color: var(--primary-color);
+    }
+
+    .metric-card:hover .metric-icon {
+        transform: scale(1.1) rotate(5deg);
+    }
+
+    /* Enhanced animations */
+    .metric-card {
+        animation: slideInUp 0.6s ease-out backwards;
+    }
+
+    .metric-card:nth-child(1) { animation-delay: 0.1s; }
+    .metric-card:nth-child(2) { animation-delay: 0.2s; }
+    .metric-card:nth-child(3) { animation-delay: 0.3s; }
+    .metric-card:nth-child(4) { animation-delay: 0.4s; }
+
+    /* Quick Actions Section */
+    .quick-actions {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        color: white;
+        margin-bottom: 2rem;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .quick-actions::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        right: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+        animation: rotate 25s linear infinite;
+    }
+
+    .quick-actions h3 {
+        margin-bottom: 1.5rem;
+        font-weight: 700;
+        position: relative;
+        z-index: 1;
+    }
+
+    .action-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .action-btn {
+        background: rgba(255, 255, 255, 0.15);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        border-radius: 1rem;
+        padding: 1.5rem;
+        text-align: center;
+        color: white;
+        text-decoration: none;
+        transition: all 0.3s ease;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 0.75rem;
+    }
+
+    .action-btn:hover {
+        background: rgba(255, 255, 255, 0.25);
         transform: translateY(-4px);
-        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.15);
+        box-shadow: 0 12px 24px rgba(0, 0, 0, 0.15);
+        color: white;
+    }
+
+    .action-btn i {
+        font-size: 2rem;
+        opacity: 0.9;
+    }
+
+    .action-btn span {
+        font-weight: 600;
+        font-size: 0.95rem;
+    }
+
+    /* Activity Feed Enhancements */
+    .activity-feed {
+        background: white;
+        border-radius: 1.25rem;
+        padding: 1.5rem;
+        box-shadow: var(--shadow-soft);
+        margin-bottom: 2rem;
+    }
+
+    .activity-item {
+        display: flex;
+        align-items: start;
+        gap: 1rem;
+        padding: 1rem 0;
+        border-bottom: 1px solid var(--border-color);
+        animation: slideInRight 0.5s ease-out backwards;
+    }
+
+    .activity-item:last-child {
+        border-bottom: none;
+    }
+
+    .activity-icon {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1.25rem;
+        flex-shrink: 0;
+    }
+
+    .activity-content {
+        flex: 1;
+    }
+
+    .activity-content h6 {
+        margin: 0 0 0.25rem 0;
+        font-weight: 600;
+        color: var(--dark-color);
+    }
+
+    .activity-content p {
+        margin: 0;
+        font-size: 0.9rem;
+        color: var(--secondary-color);
+    }
+
+    .activity-time {
+        font-size: 0.8rem;
+        color: var(--text-muted);
+        margin-top: 0.25rem;
+    }
+
+    /* Performance Metrics */
+    .performance-card {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-radius: 1.5rem;
+        padding: 2rem;
+        color: white;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .performance-card::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+        animation: rotate 30s linear infinite reverse;
+    }
+
+    .performance-header {
+        position: relative;
+        z-index: 1;
+        margin-bottom: 1.5rem;
+    }
+
+    .performance-stats {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+        gap: 1rem;
+        position: relative;
+        z-index: 1;
+    }
+
+    .perf-stat {
+        text-align: center;
+        padding: 1rem;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 1rem;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .perf-stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+
+    .perf-stat-label {
+        font-size: 0.85rem;
+        opacity: 0.9;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
     }
 
     .metric-card:hover::after {
@@ -140,6 +366,26 @@
         place-items: center;
         font-size: 1.6rem;
         color: #fff;
+        transition: var(--transition-quick);
+        position: relative;
+        overflow: hidden;
+    }
+
+    .metric-icon::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(45deg, transparent 30%, rgba(255,255,255,0.2) 50%, transparent 70%);
+        transform: translateX(-100%);
+        transition: transform 0.6s ease;
+    }
+
+    .metric-card:hover .metric-icon::before {
+        transform: translateX(100%);
+    }
+
+    .metric-card:hover .metric-icon {
+        transform: scale(1.1) rotate(5deg);
     }
 
     .metric-value {
@@ -192,7 +438,36 @@
         padding: 1.75rem;
         background: radial-gradient(circle at top, #111b33, #050917);
         color: #fff;
-        box-shadow: 0 30px 60px rgba(5, 9, 23, 0.65);
+        box-shadow: var(--shadow-large);
+        animation: slideInLeft 0.8s ease-out;
+        overflow: hidden;
+    }
+
+    @keyframes slideInLeft {
+        from {
+            opacity: 0;
+            transform: translateX(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .status-chart-card::before {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: radial-gradient(circle, rgba(255,255,255,0.05) 0%, transparent 70%);
+        animation: rotate 20s linear infinite;
+    }
+
+    @keyframes rotate {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
     }
 
     .status-chart-card.empty canvas {
@@ -281,10 +556,48 @@
         border-radius: 1.25rem;
         background: #fff;
         border: 1px solid rgba(15, 23, 42, 0.08);
-        box-shadow: 0 20px 45px rgba(15, 23, 42, 0.08);
+        box-shadow: var(--shadow-soft);
         height: 100%;
         display: flex;
         flex-direction: column;
+        transition: var(--transition-smooth);
+        animation: fadeIn 0.8s ease-out;
+        position: relative;
+        overflow: hidden;
+    }
+
+    @keyframes fadeIn {
+        from {
+            opacity: 0;
+            transform: scale(0.95);
+        }
+        to {
+            opacity: 1;
+            transform: scale(1);
+        }
+    }
+
+    .app-card::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--primary-color), var(--info-color), var(--success-color));
+        transform: scaleX(0);
+        transform-origin: left;
+        transition: transform 0.8s ease;
+    }
+
+    .app-card:hover::before {
+        transform: scaleX(1);
+    }
+
+    .app-card:hover {
+        transform: translateY(-4px);
+        box-shadow: var(--shadow-large);
+        border-color: var(--primary-color);
     }
 
     .app-card-header {
@@ -393,12 +706,45 @@
         border-radius: 1rem;
         border: 1px solid rgba(15, 23, 42, 0.05);
         background: rgba(249, 250, 251, 0.7);
-        transition: border 200ms ease, background 200ms ease;
+        transition: var(--transition-smooth);
+        position: relative;
+        overflow: hidden;
+        animation: slideInRight 0.6s ease-out;
+    }
+
+    @keyframes slideInRight {
+        from {
+            opacity: 0;
+            transform: translateX(20px);
+        }
+        to {
+            opacity: 1;
+            transform: translateX(0);
+        }
+    }
+
+    .list-modern li::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        top: 0;
+        bottom: 0;
+        width: 3px;
+        background: linear-gradient(180deg, var(--primary-color), var(--info-color));
+        transform: scaleY(0);
+        transform-origin: top;
+        transition: transform 0.3s ease;
     }
 
     .list-modern li:hover {
         border-color: rgba(74, 108, 247, 0.45);
         background: #fff;
+        transform: translateX(8px);
+        box-shadow: var(--shadow-medium);
+    }
+
+    .list-modern li:hover::before {
+        transform: scaleY(1);
     }
 
     .list-modern .list-icon {
@@ -451,7 +797,101 @@
         .metrics-row > [class*="col"] {
             width: 100%;
         }
+
+        .quick-actions {
+            padding: 1.5rem;
+        }
+
+        .action-grid {
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .action-btn {
+            padding: 1rem;
+        }
+
+        .action-btn i {
+            font-size: 1.5rem;
+        }
+
+        .action-btn span {
+            font-size: 0.85rem;
+        }
+
+        .dashboard-hero {
+            border-radius: 1rem;
+        }
+
+        .hero-body {
+            padding: 1.5rem;
+        }
+
+        .hero-stat {
+            padding: 1rem;
+        }
+
+        .status-chart-card {
+            padding: 1rem;
+        }
+
+        .app-card {
+            margin-bottom: 1rem;
+        }
     }
+
+    @media (max-width: 400px) {
+        .action-grid {
+            grid-template-columns: 1fr;
+        }
+
+        .quick-actions h3 {
+            font-size: 1.25rem;
+        }
+    }
+
+    /* Enhanced hover effects */
+    .metric-card {
+        transform-origin: center bottom;
+    }
+
+    .metric-card:hover {
+        transform: translateY(-8px) scale(1.02);
+        z-index: 10;
+    }
+
+    /* Loading skeleton animation */
+    @keyframes shimmer {
+        0% {
+            background-position: -1000px 0;
+        }
+        100% {
+            background-position: 1000px 0;
+        }
+    }
+
+    .skeleton {
+        background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+        background-size: 1000px 100%;
+        animation: shimmer 2s infinite;
+    }
+
+    /* Floating animation for quick actions */
+    @keyframes float {
+        0%, 100% {
+            transform: translateY(0px);
+        }
+        50% {
+            transform: translateY(-10px);
+        }
+    }
+
+    .quick-actions .action-btn:nth-child(1) { animation: float 3s ease-in-out infinite; }
+    .quick-actions .action-btn:nth-child(2) { animation: float 3s ease-in-out infinite 0.5s; }
+    .quick-actions .action-btn:nth-child(3) { animation: float 3s ease-in-out infinite 1s; }
+    .quick-actions .action-btn:nth-child(4) { animation: float 3s ease-in-out infinite 1.5s; }
+    .quick-actions .action-btn:nth-child(5) { animation: float 3s ease-in-out infinite 2s; }
+    .quick-actions .action-btn:nth-child(6) { animation: float 3s ease-in-out infinite 2.5s; }
 </style>
 {% endblock %}
 
@@ -566,6 +1006,43 @@
                         <i class="bi bi-flag-fill"></i> Legacy alumni
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Quick Actions Section -->
+        <div class="quick-actions">
+            <h3>Quick Actions</h3>
+            <div class="action-grid">
+                <a href="{% url 'hrms:officer_create' %}" class="action-btn">
+                    <i class="fas fa-user-plus"></i>
+                    <span>Add Officer</span>
+                </a>
+                <a href="{% url 'hrms:daily_attendance' %}" class="action-btn">
+                    <i class="fas fa-calendar-check"></i>
+                    <span>Mark Attendance</span>
+                </a>
+                <a href="{% url 'hrms:leave_request_list' %}" class="action-btn">
+                    <i class="fas fa-plane"></i>
+                    <span>Leave Requests</span>
+                </a>
+                <a href="{% url 'hrms:report_list' %}" class="action-btn">
+                    <i class="fas fa-chart-bar"></i>
+                    <span>View Reports</span>
+                </a>
+                <a href="{% url 'hrms:notification_list' %}" class="action-btn">
+                    <i class="fas fa-bell"></i>
+                    <span>Notifications</span>
+                </a>
+                <a href="{% url 'hrms:office_assignment_list' %}" class="action-btn">
+                    <i class="fas fa-building"></i>
+                    <span>Manage Offices</span>
+                </a>
+                {% if user.is_superuser or user.is_staff %}
+                    <a href="{% url 'audit:audit_summary' %}" class="action-btn">
+                        <i class="fas fa-user-shield"></i>
+                        <span>Audit Trail</span>
+                    </a>
+                {% endif %}
             </div>
         </div>
 

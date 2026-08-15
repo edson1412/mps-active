@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'prison.apps.PrisonConfig',
     'hrms',
+    'audit',
     'django_extensions',
     'accounts.apps.AccountsConfig',
     'crispy_forms',
@@ -66,6 +67,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'audit.middleware.AuditRequestMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -78,6 +80,7 @@ TEMPLATES = [
         'DIRS': [BASE_DIR / 'templates'],  # Optional global templates folder
         'APP_DIRS': True,
         'OPTIONS': {
+            'builtins': ['hrms.templatetags.training_filters'],
             'context_processors': [
                 'django.template.context_processors.debug',
                 'django.template.context_processors.request',
@@ -118,6 +121,9 @@ AUTH_PASSWORD_VALIDATORS = [
     },
     {
         'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    },
+    {
+        'NAME': 'accounts.validators.LetterAndNumberValidator',
     },
 ]
 
@@ -187,3 +193,15 @@ SESSION_COOKIE_AGE = 30 * 60  # 30 minutes in seconds
 
 # Optional: Update the session with each request
 SESSION_SAVE_EVERY_REQUEST = True
+
+# Email (leave-reminder / notification emails). Console backend unless SMTP is configured.
+EMAIL_HOST = os.getenv('EMAIL_HOST', '')
+if EMAIL_HOST:
+    EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+    EMAIL_PORT = int(os.getenv('EMAIL_PORT', '587'))
+    EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS', 'True').lower() == 'true'
+    EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER', '')
+    EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD', '')
+else:
+    EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+DEFAULT_FROM_EMAIL = os.getenv('DEFAULT_FROM_EMAIL', 'noreply@mps.local')

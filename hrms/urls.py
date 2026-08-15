@@ -7,7 +7,8 @@ app_name = 'hrms'
 
 urlpatterns = [
     # Dashboard
-    path('', views.dashboard_view, name='dashboard'), # Main HRMS dashboard
+    path('', views.dashboard_view, name='dashboard_home'),
+    path('dashboard/', views.dashboard_view, name='dashboard'), # Main HRMS dashboard
     path('dashboard/data/', views.dashboard_data_api_view, name='dashboard_data_api'),
 
     # Officer Management
@@ -65,6 +66,8 @@ urlpatterns = [
     path('attendance-records/<int:pk>/edit/', views.attendance_record_update_view, name='attendance_record_update'),
     path('attendance-records/<int:pk>/delete/', views.attendance_record_delete_view, name='attendance_record_delete'),
     path('attendance-report/', views.attendance_report_view, name='attendance_report'),
+    path('attendance-report/export/pdf/', views.attendance_report_pdf_export_view, name='attendance_report_pdf_export'),
+    path('attendance/export/officer/<str:service_number>/', views.export_officer_attendance_view, name='export_officer_attendance'),
 
     # Disciplinary Cases Management
     path('officers/<str:service_number>/add-disciplinary-case/', views.disciplinary_case_create_view, name='disciplinary_case_create'),
@@ -93,4 +96,70 @@ urlpatterns = [
 
     # NEW: Real-time Notification Count URL (AJAX endpoint)
     path('notifications/unread-count/', views.get_unread_notification_count_view, name='unread_notification_count'),
+
+    # Attendance Management
+    path('attendance/', views.daily_attendance_view, name='daily_attendance'),
+    path('attendance/save/', views.save_daily_attendance_view, name='save_daily_attendance'),
+    path('attendance/<str:date_str>/', views.get_attendance_for_date_view, name='get_attendance_for_date'),
+    path('attendance/export/<str:date_str>/', views.export_attendance_view, name='export_attendance'),
+    
+    # Office Assignments
+    path('office-assignments/', views.office_assignment_list_view, name='office_assignment_list'),
+
+    # Training Wing URLs
+    path('training/', views.training_dashboard, name='training_dashboard'),
+    path('training/intakes/', views.intake_list, name='intake_list'),
+    path('training/intakes/create/', views.intake_create, name='intake_create'),
+    path('training/intakes/<int:pk>/', views.intake_detail, name='intake_detail'),
+    path('training/intakes/<int:pk>/graduation/', views.intake_graduation_view, name='intake_graduation'),
+    path('training/intakes/<int:pk>/ranking/', views.class_ranking_view, name='class_ranking'),
+    path('training/intakes/<int:pk>/export-graduation/', views.export_graduation_list_view, name='export_graduation_list'),
+    
+    # Courses Management
+    path('training/courses/', views.course_list, name='course_list'),
+    path('training/courses/create/', views.course_create, name='course_create'),
+    path('training/courses/<int:pk>/', views.course_detail, name='course_detail'),
+    path('training/courses/<int:pk>/edit/', views.course_update, name='course_update'),
+    
+    # Recruits Management
+    path('training/recruits/', views.recruit_list, name='recruit_list'),
+    path('training/recruits/<int:pk>/', views.recruit_detail, name='recruit_detail'),
+    path('training/recruits/<int:pk>/edit/', views.recruit_update, name='recruit_update'),
+    path('training/intakes/<int:intake_pk>/recruits/create/', views.recruit_create, name='recruit_create'),
+    
+    # Marks Management
+    path('training/recruits/<int:recruit_pk>/marks/add/', views.add_mark, name='add_mark'),
+    path('training/marks/<int:pk>/edit/', views.edit_mark, name='edit_mark'),
+    
+    # Bulk Operations - Grouped under /training/bulk/
+    path('training/bulk/marks/import/csv/', 
+         views.bulk_marks_import_csv_view, 
+         name='bulk_marks_import_csv'),
+    path('training/bulk/marks/import/excel/', 
+         views.bulk_marks_import_excel_view, 
+         name='bulk_marks_import_excel'),
+    path('training/bulk/marks/add/', views.bulk_add_marks_view, name='bulk_add_marks'),
+    path('training/bulk/marks/add/<int:module_pk>/', views.bulk_add_marks_view, name='bulk_add_marks_module'),
+    path('training/bulk/templates/download/', 
+         views.download_csv_template_view, 
+         name='download_csv_template'),
+    path('training/bulk/import-failures/download/', 
+         views.download_import_failures_view, 
+         name='download_import_failures'),
+    path('training/bulk/import/status/', 
+         views.marks_import_status_view, 
+         name='marks_import_status'),
+
+    # System Error Page
+    path('system-error/', views.system_error_view, name='system_error'),
+    path('system-error/<str:error_code>/', views.system_error_view, name='system_error_with_code'),
+
+    # ICT Personnel Dashboard and User Management
+    path('ict/dashboard/', views.ict_dashboard_view, name='ict_dashboard'),
+    path('ict/users/', views.ict_user_list_view, name='ict_user_list'),
+    path('ict/users/create/', views.ict_user_create_view, name='ict_user_create'),
+    path('ict/users/<int:user_id>/', views.ict_user_detail_view, name='ict_user_detail'),
+    path('ict/users/<int:user_id>/edit/', views.ict_user_update_view, name='ict_user_update'),
+    path('ict/users/<int:user_id>/delete/', views.ict_user_delete_view, name='ict_user_delete'),
+    path('ict/system-logs/', views.ict_system_logs_view, name='ict_system_logs'),
 ]

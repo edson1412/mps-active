@@ -7,9 +7,12 @@ from django.contrib.auth.views import PasswordChangeView
 from django.core.exceptions import PermissionDenied
 from django.urls import reverse_lazy
 
-from .forms import CustomUserCreationForm, CustomPasswordChangeForm
+from .forms import CustomUserCreationForm, CustomPasswordChangeForm, UserProfileForm
 from .models import CustomUser
 from .routing import landing_url_for
+
+
+MAX_FAILED_LOGIN_ATTEMPTS = 3
 
 
 def login_view(request):
@@ -26,14 +29,35 @@ def login_view(request):
                 password=form.cleaned_data.get('password'),
             )
             if user is not None:
+                if user.is_locked or user.require_password_reset:
+                    form.add_error(None, 'Your account is locked. Contact ICT to reset your password.')
+                    return render(request, 'accounts/login.html', {'form': form})
+
+                if user.failed_login_attempts:
+                    user.failed_login_attempts = 0
+                    user.save(update_fields=['failed_login_attempts'])
                 login(request, user)
                 if user.must_change_password:
                     messages.info(request, 'Please change your password before continuing.')
                     return redirect('change_password')
                 return redirect(landing_url_for(user))
+        else:
+            _register_failed_login(request.POST.get('username', ''))
     else:
         form = AuthenticationForm()
     return render(request, 'accounts/login.html', {'form': form})
+
+
+def _register_failed_login(username):
+    """Counts a failed attempt and locks the account once the threshold is hit."""
+    user = CustomUser.objects.filter(username=username).first()
+    if user is None:
+        return
+    user.failed_login_attempts = (user.failed_login_attempts or 0) + 1
+    if user.failed_login_attempts >= MAX_FAILED_LOGIN_ATTEMPTS:
+        user.is_locked = True
+        user.require_password_reset = True
+    user.save(update_fields=['failed_login_attempts', 'is_locked', 'require_password_reset'])
 
 
 @login_required
@@ -49,6 +73,25 @@ def user_profile_view(request):
     return render(request, 'accounts/user_profile.html', {
         'user': request.user,
         'title': 'User Profile',
+    })
+
+
+@login_required
+def edit_profile_view(request):
+    """Lets a user update their own names, email and profile picture."""
+    if request.method == 'POST':
+        form = UserProfileForm(request.POST, request.FILES, instance=request.user)
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'Your profile has been updated successfully!')
+            return redirect('user_profile')
+        messages.error(request, 'Please correct the errors below.')
+    else:
+        form = UserProfileForm(instance=request.user)
+
+    return render(request, 'accounts/edit_profile.html', {
+        'form': form,
+        'title': 'Edit Profile',
     })
 
 

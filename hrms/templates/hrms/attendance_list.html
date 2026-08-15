@@ -20,6 +20,9 @@
         <a href="{% url 'hrms:attendance_record_create' service_number=officer_filter.service_number %}" class="btn btn-primary btn-pill">
             <i class="fas fa-plus-circle me-2"></i> Add Attendance Record
         </a>
+        <a href="{% url 'hrms:export_officer_attendance' service_number=officer_filter.service_number %}" class="btn btn-outline-success btn-pill">
+            <i class="fas fa-file-csv me-2"></i> Export CSV
+        </a>
     {% endif %}
     <a href="{% if officer_filter %}{% url 'hrms:officer_detail' service_number=officer_filter.service_number %}{% else %}{% url 'hrms:dashboard' %}{% endif %}" class="btn btn-outline-secondary btn-pill">
         <i class="fas fa-arrow-left me-2"></i> Back
@@ -76,8 +79,8 @@
                         {% if not officer_filter %}<th scope="col">Officer</th>{% endif %}
                         <th scope="col">Date</th>
                         <th scope="col">Status</th>
-                        <th scope="col">Notes</th>
-                        <th scope="col">Recorded By</th>
+                        <th scope="col">Remarks</th>
+                        <th scope="col">Marked By</th>
                         <th scope="col" class="text-end">Actions</th>
                     </tr>
                 </thead>
@@ -96,8 +99,8 @@
                                 {{ record.get_status_display }}
                             </span>
                         </td>
-                        <td>{{ record.notes|default:"-" }}</td>
-                        <td>{{ record.recorded_by.get_full_name|default:record.recorded_by.username|default:"N/A" }}</td>
+                        <td>{{ record.remarks|default:"-" }}</td>
+                        <td>{{ record.marked_by.get_full_name|default:record.marked_by.username|default:"N/A" }}</td>
                         <td>
                             <div class="action-stack justify-content-end">
                                 <a href="{% url 'hrms:attendance_record_update' pk=record.pk %}" class="btn btn-outline-warning btn-sm btn-pill">
