@@ -17,5 +17,9 @@ def user_roles(request):
             'is_oc': user.is_oc,
             'is_so': user.is_so,
             'is_station_hr': user.is_station_hr,
+            'is_training_wing_officer': user.is_training_wing_officer,
+            'is_commissioner_training_school': user.is_commissioner_training_school,
+            'is_ict_personnel': user.is_ict_personnel,
+            'can_access_training': user.can_access_training,
         }
     return {}

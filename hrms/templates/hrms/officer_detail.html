@@ -433,7 +433,7 @@
                             <tr>
                                 <th>Date</th>
                                 <th>Status</th>
-                                <th>Notes</th>
+                                <th>Remarks</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -442,7 +442,7 @@
                                 <tr>
                                     <td>{{ attendance.date|date:"M d, Y" }}</td>
                                     <td><span class="badge bg-{% if attendance.status == 'present' %}success{% elif attendance.status == 'absent' %}danger{% else %}warning{% endif %}">{{ attendance.get_status_display }}</span></td>
-                                    <td>{{ attendance.notes|default:"-" }}</td>
+                                    <td>{{ attendance.remarks|default:"-" }}</td>
                                     <td>
                                         <a href="{% url 'hrms:attendance_record_update' pk=attendance.pk %}" class="btn btn-warning btn-sm rounded-pill me-1" title="Edit Record">
                                             <i class="fas fa-edit"></i>

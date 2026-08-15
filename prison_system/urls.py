@@ -24,6 +24,7 @@ urlpatterns = [
     path('', include('prison.urls')),  # Root path for the inmates (prison) module
     path('hr/', include('hrms.urls')),  # Officers (HRMS) module
     path('accounts/', include('accounts.urls')),
+    path('audit/', include('audit.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
 
 if settings.DEBUG:

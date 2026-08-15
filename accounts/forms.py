@@ -48,3 +48,29 @@ class CustomPasswordChangeForm(PasswordChangeForm):
         self.fields['old_password'].widget.attrs.update({'class': 'form-control'})
         self.fields['new_password1'].widget.attrs.update({'class': 'form-control'})
         self.fields['new_password2'].widget.attrs.update({'class': 'form-control'})
+
+
+class UserProfileForm(forms.ModelForm):
+    """Lets a user edit their own basic details and profile picture."""
+
+    ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp']
+    MAX_IMAGE_SIZE = 5 * 1024 * 1024
+
+    class Meta:
+        model = CustomUser
+        fields = ['first_name', 'last_name', 'email', 'profile_picture']
+        widgets = {
+            'first_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'last_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'email': forms.EmailInput(attrs={'class': 'form-control'}),
+            'profile_picture': forms.FileInput(attrs={'class': 'form-control', 'accept': 'image/*'}),
+        }
+
+    def clean_profile_picture(self):
+        picture = self.cleaned_data.get('profile_picture')
+        if picture and hasattr(picture, 'content_type'):
+            if picture.size > self.MAX_IMAGE_SIZE:
+                raise forms.ValidationError('Profile picture must be less than 5MB.')
+            if picture.content_type not in self.ALLOWED_IMAGE_TYPES:
+                raise forms.ValidationError('Profile picture must be a JPEG, PNG, GIF or WebP image.')
+        return picture
