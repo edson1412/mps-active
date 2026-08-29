@@ -6,14 +6,19 @@ from django import forms
 from .models import (
     Officer, Education, PromotionHistory, TransferHistory, LeaveRequest, OfficerDocument, 
     PerformanceMetric, OfficerPerformance, Attendance, DisciplinaryCase, DisciplinaryCaseFile, 
-    Rank, OfficeAssignment, LeaveType, PrisonStation, Region,
+    Rank, OfficeAssignment, LeaveType,
     TrainingIntake, TrainingCourse, Recruit, RecruitMark, 
     GraduationBatch, CourseEnrollment, BulkMarkImport, ProvisionalServiceNumber
 )
+from accounts.models import Region, PrisonStation
+from accounts.forms import RegionForm, PrisonStationForm as BasePrisonStationForm
 from django.forms import inlineformset_factory
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Fieldset, Field, HTML
 from django.utils.translation import gettext_lazy as _
+
+# Use the base form from accounts but don't duplicate the definition
+PrisonStationForm = BasePrisonStationForm
 
 class OfficerForm(forms.ModelForm):
     """
@@ -407,51 +412,6 @@ class OfficeAssignmentForm(forms.ModelForm):
         self.helper = FormHelper()
         self.helper.layout = Layout(
             Column('current_office_assignment', css_class='form-group col-md-12 mb-3'),
-        )
-
-# New Forms for Region and PrisonStation
-class RegionForm(forms.ModelForm):
-    class Meta:
-        model = Region
-        fields = ['name', 'code', 'description']
-        widgets = {
-            'description': forms.Textarea(attrs={'rows': 3}),
-        }
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_tag = False
-        self.helper.layout = Layout(
-            Column('name', css_class='form-group col-md-12 mb-3'),
-            Column('code', css_class='form-group col-md-12 mb-3'),
-            Column('description', css_class='form-group col-md-12 mb-3'),
-        )
-
-class PrisonStationForm(forms.ModelForm):
-    class Meta:
-        model = PrisonStation
-        fields = ['name', 'code', 'region', 'location', 'contact_number', 'capacity', 'date_established']
-        widgets = {
-            'date_established': forms.DateInput(attrs={'type': 'date'}),
-        }
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.form_tag = False
-        self.helper.layout = Layout(
-            Row(
-                Column('name', css_class='form-group col-md-6 mb-3'),
-                Column('code', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('region', css_class='form-group col-md-6 mb-3'),
-                Column('location', css_class='form-group col-md-6 mb-3'),
-            ),
-            Row(
-                Column('contact_number', css_class='form-group col-md-4 mb-3'),
-                Column('capacity', css_class='form-group col-md-4 mb-3'),
-                Column('date_established', css_class='form-group col-md-4 mb-3'),
-            ),
         )
 
 

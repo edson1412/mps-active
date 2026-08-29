@@ -5,7 +5,7 @@ from django.core.management import call_command
 from django.test import TestCase
 from django.urls import reverse
 
-from prison.models import PrisonStation, Region
+from accounts.models import PrisonStation, Region
 
 from .models import (
     GraduationBatch,

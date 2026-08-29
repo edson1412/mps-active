@@ -2,7 +2,7 @@
 
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required, user_passes_test
-from django.db.models import Q, Sum, F, Count, Avg
+from django.db.models import Q, Sum, F, Count, Avg, Max
 from django.db.models.functions import ExtractYear, ExtractMonth
 from django.contrib import messages
 from django.utils import timezone
@@ -34,11 +34,11 @@ from .forms import (
     OfficerForm, EducationFormSet, PromotionHistoryForm, TransferHistoryForm,
     LeaveRequestForm, LeaveApprovalForm, OfficerDocumentForm, OfficerFileResponseForm,
     OfficerPerformanceForm, AttendanceForm, DisciplinaryCaseForm, OfficeAssignmentForm,
-    RegionForm, PrisonStationForm, TrainingCourseForm, TrainingIntakeForm,
+    TrainingCourseForm, TrainingIntakeForm,
     IntakeGraduationForm, RecruitForm, RecruitMarkForm
 )
-from accounts.models import CustomUser
-from prison.models import PrisonStation, Region
+from accounts.models import CustomUser, Region, PrisonStation
+from accounts.forms import RegionForm, PrisonStationForm
 from .email_utils import send_leave_approval_email, send_leave_rejection_email
 
 
@@ -4029,7 +4029,19 @@ def bulk_add_marks_view(request, module_pk=None):
     # Get intake from GET parameter or POST data
     intake_pk = request.GET.get('intake_pk') or request.POST.get('intake_pk')
     if not intake_pk:
-        return JsonResponse({'error': 'Intake ID is required'}, status=400)
+        # Redirect to intake selection page if intake_pk is not provided
+        intakes = TrainingIntake.objects.filter(is_active=True).order_by('-start_date')
+        if not intakes.exists():
+            messages.error(request, "No active training intakes found.")
+            return redirect('hrms:training')
+        if intakes.count() == 1:
+            return redirect(f'{request.path}?intake_pk={intakes.first().pk}')
+        # Show intake selection page
+        return render(request, 'hrms/intake_selection.html', {
+            'intakes': intakes,
+            'action': 'bulk_add_marks',
+            'title': 'Select Training Intake - Bulk Add Marks'
+        })
     intake = get_object_or_404(TrainingIntake, pk=intake_pk)
     recruits = intake.recruits.filter(status__in=['enrolled', 'in_training'])
     
@@ -4121,7 +4133,19 @@ def bulk_marks_import_csv_view(request):
     # Get intake from GET parameter or POST data
     intake_pk = request.GET.get('intake_pk') or request.POST.get('intake_pk')
     if not intake_pk:
-        return JsonResponse({'error': 'Intake ID is required'}, status=400)
+        # Redirect to intake selection page if intake_pk is not provided
+        intakes = TrainingIntake.objects.filter(is_active=True).order_by('-start_date')
+        if not intakes.exists():
+            messages.error(request, "No active training intakes found.")
+            return redirect('hrms:training')
+        if intakes.count() == 1:
+            return redirect(f'{request.path}?intake_pk={intakes.first().pk}')
+        # Show intake selection page
+        return render(request, 'hrms/intake_selection.html', {
+            'intakes': intakes,
+            'action': 'bulk_marks_import_csv',
+            'title': 'Select Training Intake - Bulk Import Marks via CSV'
+        })
     
     intake = get_object_or_404(TrainingIntake, pk=intake_pk)
     recruits = intake.recruits.filter(status__in=['enrolled', 'in_training'])
@@ -4417,7 +4441,19 @@ def bulk_marks_import_excel_view(request):
     # Get intake from GET parameter or POST data
     intake_pk = request.GET.get('intake_pk') or request.POST.get('intake_pk')
     if not intake_pk:
-        return JsonResponse({'error': 'Intake ID is required'}, status=400)
+        # Redirect to intake selection page if intake_pk is not provided
+        intakes = TrainingIntake.objects.filter(is_active=True).order_by('-start_date')
+        if not intakes.exists():
+            messages.error(request, "No active training intakes found.")
+            return redirect('hrms:training')
+        if intakes.count() == 1:
+            return redirect(f'{request.path}?intake_pk={intakes.first().pk}')
+        # Show intake selection page
+        return render(request, 'hrms/intake_selection.html', {
+            'intakes': intakes,
+            'action': 'bulk_marks_import_excel',
+            'title': 'Select Training Intake - Bulk Import Marks via Excel'
+        })
     intake = get_object_or_404(TrainingIntake, pk=intake_pk)
     recruits = intake.recruits.filter(status__in=['enrolled', 'in_training'])
     

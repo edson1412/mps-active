@@ -8,10 +8,8 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.urls import reverse
 
-# It's assumed that these models exist in an `accounts` app.
-# If not, you'll need to create them.
-from accounts.models import CustomUser
-from prison.models import PrisonStation, Region
+# Import models from accounts app to use the unified models
+from accounts.models import CustomUser, Region, PrisonStation
 
 # --- Helper Functions ---
 

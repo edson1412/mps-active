@@ -68,6 +68,21 @@ def logout_view(request):
 
 
 @login_required
+def dashboard_choice_view(request):
+    """Display dashboard choice for users with dual access."""
+    if not request.user.has_dual_dashboards():
+        # User doesn't have dual access, redirect to their primary dashboard
+        return redirect(landing_url_for(request.user))
+    
+    dashboards = request.user.get_all_dashboard_urls()
+    return render(request, 'accounts/dashboard_choice.html', {
+        'dashboards': dashboards,
+        'title': 'Select Dashboard',
+    })
+
+
+
+@login_required
 def user_profile_view(request):
     """Displays the current user's profile information."""
     return render(request, 'accounts/user_profile.html', {
@@ -115,7 +130,7 @@ def create_user(request):
 
             user.save()
             messages.success(request, f'User {user.username} created successfully.')
-            return redirect('user_list')
+            return redirect(landing_url_for(request.user))
     else:
         form = CustomUserCreationForm(request=request)
 
@@ -134,7 +149,7 @@ def user_list(request):
     else:
         users = CustomUser.objects.exclude(role__in=[CustomUser.ROLE_SUPERUSER, CustomUser.ROLE_ADMIN])
 
-    return render(request, 'accounts/user_list.html', {'users': users})
+    return render(request, 'accounts/user_list.html', {'users': users, 'user': request.user})
 
 
 @login_required
@@ -148,14 +163,14 @@ def toggle_user_status(request, user_id):
     # Prevent deactivating yourself
     if user == request.user:
         messages.error(request, 'You cannot deactivate your own account!')
-        return redirect('user_list')
+        return redirect(landing_url_for(request.user))
 
     user.is_active = not user.is_active
     user.save()
 
     status = 'activated' if user.is_active else 'deactivated'
     messages.success(request, f'User {user.username} has been {status}.')
-    return redirect('user_list')
+    return redirect(landing_url_for(request.user))
 
 
 class CustomPasswordChangeView(PasswordChangeView):

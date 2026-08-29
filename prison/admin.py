@@ -114,17 +114,6 @@ class PrisonerAdmin(admin.ModelAdmin):
 
         return inlines
 
-@admin.register(Region)
-class RegionAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code')
-    search_fields = ('name', 'code')
-
-@admin.register(PrisonStation)
-class PrisonStationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'code', 'location', 'region', 'capacity', 'date_established')
-    list_filter = ('region',)
-    search_fields = ('name', 'code', 'location')
-
 @admin.register(ActivityLog)
 class ActivityLogAdmin(admin.ModelAdmin):
     list_display = ('user', 'action', 'model', 'object_id', 'timestamp')

@@ -1,7 +1,7 @@
 # forms.py
 from django import forms
 from .models import *
-from accounts.models import CustomUser
+from accounts.models import CustomUser, PrisonStation, Region
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
 from django.utils import timezone
@@ -10,13 +10,7 @@ from decimal import Decimal
 
 User = get_user_model()
 
-class PrisonStationForm(forms.ModelForm):
-    class Meta:
-        model = PrisonStation
-        fields = ['name', 'code', 'region', 'location', 'contact_number', 'capacity', 'date_established']
-        widgets = {
-            'date_established': forms.DateInput(attrs={'type': 'date'}),
-        }
+# PrisonStationForm is now in accounts/forms.py, imported from there
 
 class PrisonerForm(forms.ModelForm):
     class Meta:

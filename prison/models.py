@@ -14,53 +14,9 @@ import json
 
 User = get_user_model()
 
-class Region(models.Model):
-    """Region a prison station belongs to.
+# Import Region and PrisonStation from accounts app to avoid duplication
+from accounts.models import Region, PrisonStation
 
-    Shared by both modules: inmate records are scoped through their station's
-    region and officers/users are scoped directly by region.
-    """
-
-    name = models.CharField(max_length=100, unique=True)
-    code = models.SlugField(max_length=20, unique=True)
-    description = models.TextField(blank=True)
-
-    class Meta:
-        verbose_name = "Region"
-        verbose_name_plural = "Regions"
-        ordering = ['name']
-
-    def __str__(self):
-        return self.name
-
-
-class PrisonStation(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    code = models.CharField(max_length=10, unique=True)
-    location = models.CharField(max_length=100)
-    region = models.ForeignKey(
-        Region,
-        on_delete=models.PROTECT,
-        related_name='stations',
-    )
-    contact_number = models.CharField(max_length=20, blank=True)
-    capacity = models.PositiveIntegerField()
-    date_established = models.DateField()
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        related_name='created_stations'
-    )
-    created_at = models.DateTimeField(auto_now_add=True)
-
-    def __str__(self):
-        return f"{self.name} ({self.region.name})"
-
-    class Meta:
-        verbose_name = "Prison Station"
-        verbose_name_plural = "Prison Stations"
-        
 class Prisoner(models.Model):
     PRISONER_CLASS_CHOICES = [
         ('convicted', 'Convicted'),

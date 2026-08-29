@@ -50,7 +50,6 @@ from .models import (
     PrisonerTransfer,
     ActivityLog,
     ReleaseOnRemission,
-    PrisonStation,
     Visitor,
     MedicalRecord,
     IncidentReport,
@@ -65,6 +64,7 @@ from .models import (
     FingerprintAuditLog,
     PrisonerReleaseReview,
 )
+from accounts.models import CustomUser, PrisonStation, Region
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect
 from .models import *
@@ -79,7 +79,6 @@ from .forms import (
     PrisonerTransferForm,
     SentenceReductionForm,
     SearchForm,
-    PrisonStationForm,
     VisitorForm,
     MedicalRecordForm,
     IncidentReportForm,
@@ -96,8 +95,11 @@ from .forms import (
     FingerprintMatchConfirmForm,
     RiskAssessmentForm,
 )
+from accounts.forms import PrisonStationForm as BasePrisonStationForm
+
+# Use the base form from accounts
+PrisonStationForm = BasePrisonStationForm
 from .biometric_service import BiometricService, FingerprintProcessor, FingerprintDeviceManager
-from accounts.models import CustomUser
 from django.contrib.auth import get_user_model
 
 User = get_user_model()
@@ -158,7 +160,11 @@ def _get_lockup_summary_data(request_user):
         'physical', 'particulars', 'convicted_details')
 
     if is_super_admin_user:
-        return _get_regional_summary_data(prisoners_base_qs)
+        regional_data = _get_regional_summary_data(prisoners_base_qs)
+        return {
+            'regional_summary': regional_data,
+            'overall_summary': _calculate_overall_summary(prisoners_base_qs),
+        }
     elif has_region_permission and request_user.region:
         region_prisoners = prisoners_base_qs.filter(prison_station__region=request_user.region)
         regional_data = _get_regional_summary_data(region_prisoners, single_region=True)
@@ -189,21 +195,22 @@ def _get_regional_summary_data(prisoners_qs, single_region=False):
         ).distinct()
         if not stations.exists():
             return None
-        region_name = stations.first().get_region_display()
+        region_name = stations.first().region.name
         region_data = _calculate_region_data(stations, prisoners_qs)
         return {region_name: region_data}
     else:
-        regions = PrisonStation.REGION_CHOICES
+        from accounts.models import Region
+        regions = Region.objects.all()
         regional_summary = {}
-        for region_code, region_display in regions:
-            region_stations = PrisonStation.objects.filter(region=region_code)
+        for region in regions:
+            region_stations = PrisonStation.objects.filter(region=region)
             if not region_stations.exists():
                 continue
-            region_prisoners = prisoners_qs.filter(prison_station__region=region_code)
+            region_prisoners = prisoners_qs.filter(prison_station__region=region)
             if not region_prisoners.exists():
                 continue
             region_data = _calculate_region_data(region_stations, region_prisoners)
-            regional_summary[region_display] = region_data
+            regional_summary[region.name] = region_data
         return regional_summary
 
 

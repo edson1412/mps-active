@@ -1,9 +1,7 @@
 from django import forms
 from django.contrib.auth.forms import UserCreationForm, PasswordChangeForm
 
-from prison.models import PrisonStation, Region
-
-from .models import CustomUser
+from .models import CustomUser, PrisonStation, Region
 
 
 class CustomUserCreationForm(UserCreationForm):
@@ -32,7 +30,7 @@ class CustomUserCreationForm(UserCreationForm):
     def clean(self):
         cleaned_data = super().clean()
         role = cleaned_data.get('role')
-        if role in [CustomUser.ROLE_RCO, CustomUser.ROLE_RHO, CustomUser.ROLE_REGIONAL_HR]:
+        if role in [CustomUser.ROLE_REGIONAL_COMMANDING_OFFICER, CustomUser.ROLE_REGIONAL_HEADQUARTERS_OFFICER, CustomUser.ROLE_REGIONAL_HR]:
             if not cleaned_data.get('region'):
                 self.add_error('region', 'Regional roles must be assigned a region.')
         elif role and role not in [CustomUser.ROLE_SUPERUSER, CustomUser.ROLE_ADMIN,
@@ -74,3 +72,59 @@ class UserProfileForm(forms.ModelForm):
             if picture.content_type not in self.ALLOWED_IMAGE_TYPES:
                 raise forms.ValidationError('Profile picture must be a JPEG, PNG, GIF or WebP image.')
         return picture
+
+
+class PrisonStationForm(forms.ModelForm):
+    class Meta:
+        model = PrisonStation
+        fields = ['name', 'code', 'region', 'location_address', 'contact_number', 'capacity', 'date_established']
+        widgets = {
+            'date_established': forms.DateInput(attrs={'type': 'date'}),
+        }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            from crispy_forms.helper import FormHelper
+            from crispy_forms.layout import Layout, Submit, Row, Column
+            self.helper = FormHelper()
+            self.helper.form_tag = False
+            self.helper.layout = Layout(
+                Row(
+                    Column('name', css_class='form-group col-md-6 mb-3'),
+                    Column('code', css_class='form-group col-md-6 mb-3'),
+                ),
+                Row(
+                    Column('region', css_class='form-group col-md-6 mb-3'),
+                    Column('location_address', css_class='form-group col-md-6 mb-3'),
+                ),
+                Row(
+                    Column('contact_number', css_class='form-group col-md-4 mb-3'),
+                    Column('capacity', css_class='form-group col-md-4 mb-3'),
+                    Column('date_established', css_class='form-group col-md-4 mb-3'),
+                ),
+            )
+        except ImportError:
+            pass
+
+
+class RegionForm(forms.ModelForm):
+    class Meta:
+        model = Region
+        fields = ['name', 'code', 'description']
+        widgets = {
+            'description': forms.Textarea(attrs={'rows': 3}),
+        }
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        try:
+            from crispy_forms.helper import FormHelper
+            from crispy_forms.layout import Layout, Column
+            self.helper = FormHelper()
+            self.helper.form_tag = False
+            self.helper.layout = Layout(
+                Column('name', css_class='form-group col-md-12 mb-3'),
+                Column('code', css_class='form-group col-md-12 mb-3'),
+                Column('description', css_class='form-group col-md-12 mb-3'),
+            )
+        except ImportError:
+            pass
